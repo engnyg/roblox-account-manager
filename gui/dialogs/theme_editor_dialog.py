@@ -25,8 +25,28 @@ from gui.theme.theme_engine import (
 )
 
 
+def _parse_color(color_str: str) -> QColor:
+    """解析 #rrggbb / rgba(r,g,b,a) 為 QColor。"""
+    s = color_str.strip()
+    if s.startswith("rgba(") and s.endswith(")"):
+        try:
+            parts = [x.strip() for x in s[5:-1].split(",")]
+            r, g, b, a = int(parts[0]), int(parts[1]), int(parts[2]), int(parts[3])
+            return QColor(r, g, b, a)
+        except Exception:
+            pass
+    return QColor(s)
+
+
+def _color_to_str(color: QColor) -> str:
+    """QColor → #rrggbb（不透明）或 rgba(r,g,b,a)（含透明度）。"""
+    if color.alpha() < 255:
+        return f"rgba({color.red()},{color.green()},{color.blue()},{color.alpha()})"
+    return color.name()   # #rrggbb
+
+
 def _color_button(color: str) -> QPushButton:
-    """建立顯示指定顏色的按鈕（正方形色塊）。"""
+    """建立顯示指定顏色的按鈕（正方形色塊，帶棋盤格底圖表示透明度）。"""
     btn = QPushButton()
     btn.setFixedSize(28, 28)
     btn.setToolTip(color)
@@ -36,9 +56,14 @@ def _color_button(color: str) -> QPushButton:
 
 def _set_btn_color(btn: QPushButton, color: str):
     btn.setToolTip(color)
+    # 棋盤格底圖讓透明色可視化
     btn.setStyleSheet(
-        f"QPushButton {{ background-color: {color}; border: 1px solid #888; border-radius: 3px; }}"
-        f"QPushButton:hover {{ border: 2px solid #fff; }}"
+        "QPushButton {"
+        " background-color: qlineargradient(x1:0,y1:0,x2:1,y2:1,"
+        "  stop:0 #aaa,stop:0.5 #aaa,stop:0.5 #666,stop:1 #666);"  # 棋盤底
+        f" background-color: {color};"   # 覆蓋實色/rgba（支援透明）
+        " border: 1px solid #888; border-radius: 3px; }"
+        "QPushButton:hover { border: 2px solid #fff; }"
     )
 
 
@@ -176,15 +201,20 @@ class ThemeEditorDialog(QDialog):
 
     def _pick_color(self, token: str):
         from PySide6.QtWidgets import QColorDialog
-        current = QColor(self._current_colors.get(token, "#000000"))
-        color = QColorDialog.getColor(current, self, f"選擇顏色 — {COLOR_TOKEN_LABELS.get(token, token)}")
+        current = _parse_color(self._current_colors.get(token, "#000000"))
+        color = QColorDialog.getColor(
+            current,
+            self,
+            f"選擇顏色 — {COLOR_TOKEN_LABELS.get(token, token)}",
+            QColorDialog.ColorDialogOption.ShowAlphaChannel,
+        )
         if color.isValid():
-            hex_color = color.name()
-            self._current_colors[token] = hex_color
-            _set_btn_color(self._color_btns[token], hex_color)
+            color_str = _color_to_str(color)
+            self._current_colors[token] = color_str
+            _set_btn_color(self._color_btns[token], color_str)
             lbl: QLabel | None = self.findChild(QLabel, f"hex_{token}")
             if lbl:
-                lbl.setText(hex_color)
+                lbl.setText(color_str)
 
     def _browse_background(self):
         path, _ = QFileDialog.getOpenFileName(
