@@ -173,6 +173,258 @@ BUILTIN_THEME_COLORS: dict[str, dict[str, str]] = {
 }
 
 # ------------------------------------------------------------------ #
+# iOS 26 液態玻璃（Liquid Glass）— 手寫 QSS，使用 rgba 透明層
+# 搭配背景圖片效果最佳
+# ------------------------------------------------------------------ #
+
+LIQUID_GLASS_QSS = """
+/* ── 基底 ── */
+QMainWindow, QDialog {
+    background-color: rgba(10, 10, 20, 210);
+    color: #ffffff;
+    font-family: "Segoe UI", "SF Pro Display", sans-serif;
+    font-size: 10pt;
+}
+QWidget {
+    color: #ffffff;
+    font-family: "Segoe UI", "SF Pro Display", sans-serif;
+    font-size: 10pt;
+}
+
+/* ── 選單欄 ── */
+QMenuBar {
+    background-color: rgba(255, 255, 255, 12);
+    color: #ffffff;
+    border-bottom: 1px solid rgba(255, 255, 255, 30);
+    padding: 2px 4px;
+}
+QMenuBar::item { border-radius: 6px; padding: 4px 8px; }
+QMenuBar::item:selected { background-color: rgba(255, 255, 255, 25); }
+
+QMenu {
+    background-color: rgba(20, 20, 35, 220);
+    border: 1px solid rgba(255, 255, 255, 35);
+    border-radius: 12px;
+    color: #ffffff;
+    padding: 4px;
+}
+QMenu::item { padding: 6px 20px; border-radius: 6px; }
+QMenu::item:selected { background-color: rgba(0, 122, 255, 160); }
+QMenu::separator { height: 1px; background: rgba(255,255,255,20); margin: 3px 8px; }
+
+/* ── 工具列 ── */
+QToolBar {
+    background-color: rgba(255, 255, 255, 10);
+    border-bottom: 1px solid rgba(255, 255, 255, 18);
+    spacing: 6px;
+    padding: 2px 6px;
+}
+QToolBar QLabel { color: rgba(255, 255, 255, 200); }
+
+/* ── 表格 / 清單 ── */
+QTableView, QTreeView, QListView {
+    background-color: rgba(255, 255, 255, 10);
+    alternate-background-color: rgba(255, 255, 255, 5);
+    color: #ffffff;
+    gridline-color: rgba(255, 255, 255, 18);
+    border: 1px solid rgba(255, 255, 255, 30);
+    border-radius: 12px;
+    selection-background-color: rgba(0, 122, 255, 140);
+    selection-color: #ffffff;
+}
+QHeaderView::section {
+    background-color: rgba(255, 255, 255, 18);
+    color: rgba(255, 255, 255, 220);
+    border: none;
+    border-bottom: 1px solid rgba(255, 255, 255, 25);
+    padding: 5px 8px;
+    font-weight: 600;
+}
+QTableView::item { padding: 3px 6px; }
+QTableView::item:selected { background-color: rgba(0, 122, 255, 140); border-radius: 4px; }
+
+/* ── 按鈕 ── */
+QPushButton {
+    background-color: rgba(255, 255, 255, 18);
+    color: #ffffff;
+    border: 1px solid rgba(255, 255, 255, 40);
+    border-radius: 10px;
+    padding: 5px 14px;
+    min-height: 24px;
+    font-weight: 500;
+}
+QPushButton:hover {
+    background-color: rgba(255, 255, 255, 32);
+    border-color: rgba(255, 255, 255, 60);
+}
+QPushButton:pressed {
+    background-color: rgba(0, 122, 255, 160);
+    border-color: rgba(0, 122, 255, 200);
+}
+QPushButton:disabled { color: rgba(255, 255, 255, 70); border-color: rgba(255,255,255,20); }
+
+/* ── 輸入框 ── */
+QLineEdit, QTextEdit, QPlainTextEdit {
+    background-color: rgba(255, 255, 255, 12);
+    color: #ffffff;
+    border: 1px solid rgba(255, 255, 255, 30);
+    border-radius: 10px;
+    padding: 5px 8px;
+    selection-background-color: rgba(0, 122, 255, 140);
+}
+QLineEdit:focus, QTextEdit:focus {
+    border: 1px solid rgba(0, 122, 255, 200);
+    background-color: rgba(255, 255, 255, 18);
+}
+
+/* ── 下拉選單 ── */
+QComboBox {
+    background-color: rgba(255, 255, 255, 18);
+    color: #ffffff;
+    border: 1px solid rgba(255, 255, 255, 35);
+    border-radius: 10px;
+    padding: 4px 8px;
+    min-height: 24px;
+}
+QComboBox:hover { background-color: rgba(255, 255, 255, 28); }
+QComboBox::drop-down { border: none; width: 20px; }
+QComboBox::down-arrow { image: none; border-left: 4px solid transparent; border-right: 4px solid transparent; border-top: 5px solid rgba(255,255,255,180); margin-right: 6px; }
+QComboBox QAbstractItemView {
+    background-color: rgba(20, 20, 35, 230);
+    color: #ffffff;
+    border: 1px solid rgba(255, 255, 255, 35);
+    border-radius: 10px;
+    selection-background-color: rgba(0, 122, 255, 140);
+    outline: none;
+}
+
+/* ── 核取方塊 ── */
+QCheckBox { color: #ffffff; spacing: 6px; }
+QCheckBox::indicator {
+    width: 16px; height: 16px;
+    border: 1.5px solid rgba(255, 255, 255, 50);
+    border-radius: 5px;
+    background-color: rgba(255, 255, 255, 12);
+}
+QCheckBox::indicator:checked {
+    background-color: rgba(0, 122, 255, 200);
+    border-color: rgba(0, 122, 255, 220);
+}
+
+/* ── 頁籤 ── */
+QTabWidget::pane {
+    border: 1px solid rgba(255, 255, 255, 25);
+    border-radius: 12px;
+    background-color: rgba(255, 255, 255, 8);
+}
+QTabBar::tab {
+    background: rgba(255, 255, 255, 12);
+    color: rgba(255, 255, 255, 180);
+    padding: 7px 18px;
+    border: 1px solid rgba(255, 255, 255, 20);
+    border-radius: 8px;
+    margin: 2px 2px 0 2px;
+}
+QTabBar::tab:selected {
+    background: rgba(0, 122, 255, 160);
+    color: #ffffff;
+    border-color: rgba(0, 122, 255, 200);
+}
+QTabBar::tab:hover:!selected { background: rgba(255, 255, 255, 22); }
+
+/* ── 捲軸 ── */
+QScrollBar:vertical {
+    background: transparent;
+    width: 8px;
+    border: none;
+    margin: 2px;
+}
+QScrollBar::handle:vertical {
+    background: rgba(255, 255, 255, 50);
+    border-radius: 4px;
+    min-height: 24px;
+}
+QScrollBar::handle:vertical:hover { background: rgba(255, 255, 255, 80); }
+QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical { height: 0; }
+QScrollBar:horizontal {
+    background: transparent;
+    height: 8px;
+    border: none;
+    margin: 2px;
+}
+QScrollBar::handle:horizontal {
+    background: rgba(255, 255, 255, 50);
+    border-radius: 4px;
+    min-width: 24px;
+}
+QScrollBar::add-line:horizontal, QScrollBar::sub-line:horizontal { width: 0; }
+
+/* ── 狀態列 ── */
+QStatusBar {
+    background-color: rgba(255, 255, 255, 8);
+    color: rgba(255, 255, 255, 160);
+    border-top: 1px solid rgba(255, 255, 255, 18);
+}
+
+/* ── 群組框 ── */
+QGroupBox {
+    color: rgba(255, 255, 255, 220);
+    border: 1px solid rgba(255, 255, 255, 28);
+    border-radius: 12px;
+    margin-top: 10px;
+    padding-top: 10px;
+    background-color: rgba(255, 255, 255, 6);
+}
+QGroupBox::title {
+    subcontrol-origin: margin;
+    left: 12px;
+    padding: 0 4px;
+    color: rgba(0, 200, 255, 230);
+    font-weight: 600;
+}
+
+/* ── 分割器 ── */
+QSplitter::handle { background: rgba(255, 255, 255, 20); }
+
+/* ── 進度條 ── */
+QProgressBar {
+    background-color: rgba(255, 255, 255, 12);
+    border: 1px solid rgba(255, 255, 255, 25);
+    border-radius: 6px;
+    text-align: center;
+    color: #ffffff;
+    min-height: 10px;
+}
+QProgressBar::chunk {
+    background-color: qlineargradient(x1:0, y1:0, x2:1, y2:0,
+        stop:0 rgba(0, 122, 255, 220), stop:1 rgba(0, 200, 255, 220));
+    border-radius: 5px;
+}
+
+/* ── 數字輸入 ── */
+QSpinBox, QDoubleSpinBox {
+    background-color: rgba(255, 255, 255, 12);
+    color: #ffffff;
+    border: 1px solid rgba(255, 255, 255, 30);
+    border-radius: 10px;
+    padding: 3px 6px;
+}
+QSpinBox:focus, QDoubleSpinBox:focus { border-color: rgba(0, 122, 255, 200); }
+
+/* ── 提示框 ── */
+QToolTip {
+    background-color: rgba(20, 20, 35, 230);
+    color: #ffffff;
+    border: 1px solid rgba(255, 255, 255, 40);
+    border-radius: 8px;
+    padding: 4px 8px;
+}
+
+/* ── 標籤 ── */
+QLabel { color: #ffffff; background: transparent; }
+"""
+
+# ------------------------------------------------------------------ #
 # QSS 模板（使用 .format(**colors) 填入）
 # ------------------------------------------------------------------ #
 
@@ -325,3 +577,6 @@ THEMES: dict[str, str] = {
     name: colors_to_qss(colors)
     for name, colors in BUILTIN_THEME_COLORS.items()
 }
+
+# 液態玻璃主題（手寫 QSS，不走 token 系統）
+THEMES["Liquid Glass"] = LIQUID_GLASS_QSS
