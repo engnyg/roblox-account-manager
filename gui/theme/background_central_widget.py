@@ -10,8 +10,7 @@ import os
 
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QPainter, QPixmap, QPaintEvent
-from PySide6.QtStyle import QStyleOption
-from PySide6.QtWidgets import QWidget, QStyle
+from PySide6.QtWidgets import QWidget
 
 IMAGE_EXTS = {".png", ".jpg", ".jpeg", ".bmp", ".webp"}
 GIF_EXTS   = {".gif"}
@@ -129,16 +128,11 @@ class BackgroundCentralWidget(QWidget):
             self._video_widget.lower()
 
     def paintEvent(self, event: QPaintEvent):
-        painter = QPainter(self)
+        # 1. 先讓 QSS background-color 正常繪製（主題底色）
+        super().paintEvent(event)
 
-        # 1. 先讓 QSS 繪製主題背景色（無背景圖時的 fallback）
-        opt = QStyleOption()
-        opt.initFrom(self)
-        self.style().drawPrimitive(QStyle.PrimitiveElement.PE_Widget, opt, painter, self)
-
-        # 2. 疊加背景媒體
+        # 2. 影片由 QVideoWidget 自行渲染，不需額外處理
         if self._video_widget:
-            # 影片由 QVideoWidget 自行渲染
             return
 
         pixmap: QPixmap | None = None
@@ -150,6 +144,8 @@ class BackgroundCentralWidget(QWidget):
         if not pixmap or pixmap.isNull():
             return
 
+        # 3. 將背景圖疊在主題底色上；子 widget 的 rgba 會透出這層
+        painter = QPainter(self)
         painter.setOpacity(self._opacity)
         rect = self.rect()
         scaled = pixmap.scaled(
