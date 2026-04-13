@@ -1,28 +1,28 @@
 # Roblox Account Manager V2
 
-A Python/PySide6 desktop application for managing multiple Roblox accounts — rewritten from the original C# [Roblox Account Manager](https://github.com/ic3w0lf22/Roblox-Account-Manager) by ic3w0lf22.
+以 Python/PySide6 重寫的 Roblox 多帳號管理工具，原版為 ic3w0lf22 的 C# 專案 [Roblox Account Manager](https://github.com/ic3w0lf22/Roblox-Account-Manager)。
 
-## Features
+## 功能
 
-- **Account Management** — Store and manage multiple Roblox accounts with encrypted cookie storage
-- **Account Generator** — Automatically create new Roblox accounts via browser automation (requires NopeCHA API key for captcha)
-- **Multi-Roblox** — Run multiple Roblox instances simultaneously by bypassing the single-instance mutex
-- **Game Launcher** — Launch accounts directly into any Roblox game/server
-- **Server Browser** — Browse and join specific game servers
-- **Avatar Customizer** — Randomize avatar appearance on generated accounts
-- **FPS Unlocker** — Unlock Roblox FPS beyond the default cap
-- **Nexus** — WebSocket server for in-game script communication with controlled accounts
-- **Web API** — Local HTTP server for external account control
-- **Watcher** — Monitor and auto-restart Roblox processes
-- **Theme Engine** — Customizable dark/light themes
+- **帳號管理** — 儲存並管理多個 Roblox 帳號，Cookie 加密保存
+- **帳號生成器** — 透過瀏覽器自動化批量建立新帳號（需 NopeCHA API Key 解驗證碼）
+- **Multi-Roblox** — 繞過單一實例限制，同時運行多個 Roblox
+- **遊戲啟動器** — 直接將指定帳號加入任意遊戲／伺服器
+- **伺服器瀏覽器** — 瀏覽並加入特定遊戲伺服器
+- **頭像隨機化** — 自動隨機化生成帳號的外觀
+- **FPS 解鎖** — 解除 Roblox 預設 FPS 上限
+- **Nexus** — WebSocket 伺服器，供遊戲內腳本與帳號通訊
+- **Web API** — 本地 HTTP 伺服器，支援外部程式控制帳號
+- **Watcher** — 監控並自動重啟 Roblox 進程
+- **主題引擎** — 可自訂深色／淺色主題
 
-## Requirements
+## 系統需求
 
 - Windows 10/11
 - Python 3.11+
-- [Ungoogled Chromium](https://github.com/ungoogled-software/ungoogled-chromium) (for account generation, place in `lib/`)
+- [Ungoogled Chromium](https://github.com/ungoogled-software/ungoogled-chromium)（帳號生成用，放入 `lib/`）
 
-## Installation
+## 安裝
 
 ```bash
 git clone https://github.com/engnyg/roblox-account-manager.git
@@ -31,43 +31,43 @@ pip install -r requirements.txt
 python main.py
 ```
 
-## Account Generation
+## 帳號生成
 
-Account generation requires:
-1. **NopeCHA API key** — Set in Settings → Generator → Captcha API Key ([nopecha.com](https://nopecha.com))
-2. **Ungoogled Chromium** — Extract to `lib/ungoogled-chromium-*/`
+帳號生成需要：
+1. **NopeCHA API Key** — 至 設定 → 生成器 → Captcha API Key 填入（[nopecha.com](https://nopecha.com)）
+2. **Ungoogled Chromium** — 解壓至 `lib/ungoogled-chromium-*/`
 
-## Configuration
+## 設定說明
 
-All settings are stored in `config.ini`. Key options:
+所有設定儲存於 `config.ini`，主要選項：
 
-| Section | Key | Description |
-|---------|-----|-------------|
-| `General` | `language` | UI language (`en` / `zh`) |
-| `General` | `theme` | UI theme (`Dark` / `Light`) |
-| `General` | `unlockfps` | Enable FPS unlocker |
-| `Generator` | `defaultpassword` | Default password for generated accounts |
-| `Generator` | `captchaapikey` | NopeCHA API key |
-| `Generator` | `useproxy` | Use proxy for account generation |
-| `WebServer` | `enabled` | Enable local Web API server |
-| `WebServer` | `port` | Web API port (default: `7963`) |
-| `AccountControl` | `enabled` | Enable Nexus WebSocket server |
-| `AccountControl` | `port` | Nexus port (default: `7964`) |
+| 區段 | 鍵值 | 說明 |
+|------|------|------|
+| `General` | `language` | 介面語言（`en` / `zh`） |
+| `General` | `theme` | 介面主題（`Dark` / `Light`） |
+| `General` | `unlockfps` | 啟用 FPS 解鎖 |
+| `Generator` | `defaultpassword` | 生成帳號的預設密碼 |
+| `Generator` | `captchaapikey` | NopeCHA API Key |
+| `Generator` | `useproxy` | 生成時使用代理 |
+| `WebServer` | `enabled` | 啟用本地 Web API 伺服器 |
+| `WebServer` | `port` | Web API 埠號（預設：`7963`） |
+| `AccountControl` | `enabled` | 啟用 Nexus WebSocket 伺服器 |
+| `AccountControl` | `port` | Nexus 埠號（預設：`7964`） |
 
-## Building
+## 打包
 
 ```bash
 pip install pyinstaller
 pyinstaller build.spec
 ```
 
-Output will be in `dist/`.
+輸出檔案位於 `dist/`。
 
-## Credits
+## 致謝
 
-- Original C# project: [ic3w0lf22/Roblox-Account-Manager](https://github.com/ic3w0lf22/Roblox-Account-Manager)
-- Captcha solving: [NopeCHA](https://nopecha.com)
+- 原版 C# 專案：[ic3w0lf22/Roblox-Account-Manager](https://github.com/ic3w0lf22/Roblox-Account-Manager)
+- 驗證碼解題：[NopeCHA](https://nopecha.com)
 
-## Disclaimer
+## 免責聲明
 
-This project is for educational purposes. Use responsibly and in accordance with [Roblox's Terms of Service](https://en.help.roblox.com/hc/en-us/articles/115004647846).
+本專案僅供學習研究使用，請遵守 [Roblox 使用條款](https://en.help.roblox.com/hc/en-us/articles/115004647846)。
