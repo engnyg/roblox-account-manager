@@ -81,17 +81,23 @@ def apply_theme(theme_name: str | None = None):
     opacity = bg_info.get("opacity", 0.5)
     has_bg  = bool(path and os.path.isfile(path))
 
-    # 有背景圖時：追加 QSS 讓容器半透明，圖片才能透出
-    # Liquid Glass 本身已有 rgba，不需覆蓋
-    if has_bg and name != "Liquid Glass":
-        colors      = get_theme_colors(name)
-        panel_rgba  = _hex_to_rgba(colors.get("bg_panel",  "#181825"), 170)
-        window_rgba = _hex_to_rgba(colors.get("bg_window", "#1e1e2e"), 140)
-        qss += (
-            f"\nQTableView, QTreeView, QListView {{"
-            f" background-color: {panel_rgba};"
-            f" alternate-background-color: {window_rgba}; }}"
-        )
+    # 有背景圖時：追加 QSS 讓容器透明，圖片才能透出
+    if has_bg:
+        # viewport 是 QAbstractScrollArea 的直接子 QWidget，
+        # 會被廣義 QWidget { background-color } 套上實色蓋住圖片。
+        # 讓它透明，圖片就能透出。
+        qss += "\nQAbstractScrollArea > QWidget { background-color: transparent; }\n"
+
+        # Liquid Glass 本身已有 rgba 背景，不需額外覆蓋
+        if name != "Liquid Glass":
+            colors      = get_theme_colors(name)
+            panel_rgba  = _hex_to_rgba(colors.get("bg_panel",  "#181825"), 170)
+            window_rgba = _hex_to_rgba(colors.get("bg_window", "#1e1e2e"), 140)
+            qss += (
+                f"QTableView, QTreeView, QListView {{"
+                f" background-color: {panel_rgba};"
+                f" alternate-background-color: {window_rgba}; }}\n"
+            )
 
     app = QApplication.instance()
     if app:
