@@ -25,7 +25,7 @@ from core.settings import get_settings
 from core.i18n import tr, get_i18n
 from gui.widgets.account_table import AccountTable
 from gui.theme.theme_engine import apply_theme, set_background_widget
-from gui.theme.background_widget import BackgroundWidget
+from gui.theme.background_central_widget import BackgroundCentralWidget
 
 
 class MainWindow(QMainWindow):
@@ -136,14 +136,11 @@ class MainWindow(QMainWindow):
         )
 
     def _setup_central(self):
-        central = QWidget()
+        # BackgroundCentralWidget 本身就是 central widget，
+        # 背景畫在它的 paintEvent，子 widget 的 rgba 會透出底層背景
+        central = BackgroundCentralWidget()
         self.setCentralWidget(central)
-
-        # 背景層（置於最底）
-        self._bg_widget = BackgroundWidget(central)
-        self._bg_widget.setGeometry(central.rect())
-        self._bg_widget.lower()
-        set_background_widget(self._bg_widget)
+        set_background_widget(central)
 
         layout = QVBoxLayout(central)
         layout.setContentsMargins(4, 4, 4, 4)
@@ -152,11 +149,6 @@ class MainWindow(QMainWindow):
         self._table.account_double_clicked.connect(self._on_double_click)
         self._table.context_menu_requested.connect(self._on_context_menu)
         layout.addWidget(self._table)
-
-    def resizeEvent(self, event):
-        super().resizeEvent(event)
-        if hasattr(self, "_bg_widget") and self.centralWidget():
-            self._bg_widget.setGeometry(self.centralWidget().rect())
 
     def _setup_statusbar(self):
         self._statusbar = QStatusBar()

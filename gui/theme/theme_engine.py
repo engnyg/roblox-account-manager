@@ -24,8 +24,8 @@ CUSTOM_THEMES_FILE = os.path.join("data", "custom_themes.json")
 # ------------------------------------------------------------------ #
 _custom_theme_data: dict[str, dict] = {}
 
-# 背景 Widget 的弱參考（由 main_window 設定）
-_bg_widget = None   # BackgroundWidget instance
+# BackgroundCentralWidget 的參考（由 main_window 設定）
+_bg_widget = None   # BackgroundCentralWidget instance
 
 
 def _load_custom_themes():
@@ -52,7 +52,7 @@ _load_custom_themes()
 # ------------------------------------------------------------------ #
 
 def set_background_widget(widget):
-    """由 MainWindow 呼叫，登記背景 Widget。"""
+    """由 MainWindow 呼叫，登記 BackgroundCentralWidget。"""
     global _bg_widget
     _bg_widget = widget
 
