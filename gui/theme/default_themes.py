@@ -9,21 +9,21 @@ from __future__ import annotations
 # ------------------------------------------------------------------ #
 
 COLOR_TOKEN_LABELS: dict[str, str] = {
-    "bg_window":     "視窗背景",
-    "bg_panel":      "面板背景",
-    "bg_input":      "輸入框背景",
-    "bg_button":     "按鈕背景",
-    "bg_hover":      "按鈕懸停",
-    "bg_pressed":    "按鈕按下",
-    "bg_select":     "選取背景",
-    "bg_menubar":    "選單欄背景",
-    "bg_statusbar":  "狀態欄背景",
-    "fg_text":       "主要文字",
-    "fg_dim":        "次要文字",
-    "fg_accent":     "強調色",
-    "fg_disabled":   "停用文字",
-    "border":        "邊框",
-    "border_focus":  "焦點邊框",
+    "bg_window":     "Window Background",
+    "bg_panel":      "Panel Background",
+    "bg_input":      "Input Background",
+    "bg_button":     "Button Background",
+    "bg_hover":      "Button Hover",
+    "bg_pressed":    "Button Pressed",
+    "bg_select":     "Selection Background",
+    "bg_menubar":    "Menu Bar Background",
+    "bg_statusbar":  "Status Bar Background",
+    "fg_text":       "Primary Text",
+    "fg_dim":        "Secondary Text",
+    "fg_accent":     "Accent Color",
+    "fg_disabled":   "Disabled Text",
+    "border":        "Border",
+    "border_focus":  "Focus Border",
 }
 
 # ------------------------------------------------------------------ #
