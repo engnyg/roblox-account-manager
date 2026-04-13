@@ -1,163 +1,227 @@
 """
-預設 QSS 主題。
-對應 C# Forms/ThemeEditor.cs 的內建主題。
+預設 QSS 主題 — 基於顏色 Token 系統。
 """
 
-DARK_THEME = """
-QMainWindow, QDialog, QWidget {
-    background-color: #1e1e2e;
-    color: #cdd6f4;
+from __future__ import annotations
+
+# ------------------------------------------------------------------ #
+# 顏色 Token 標籤（中文顯示用）
+# ------------------------------------------------------------------ #
+
+COLOR_TOKEN_LABELS: dict[str, str] = {
+    "bg_window":     "視窗背景",
+    "bg_panel":      "面板背景",
+    "bg_input":      "輸入框背景",
+    "bg_button":     "按鈕背景",
+    "bg_hover":      "按鈕懸停",
+    "bg_pressed":    "按鈕按下",
+    "bg_select":     "選取背景",
+    "bg_menubar":    "選單欄背景",
+    "bg_statusbar":  "狀態欄背景",
+    "fg_text":       "主要文字",
+    "fg_dim":        "次要文字",
+    "fg_accent":     "強調色",
+    "fg_disabled":   "停用文字",
+    "border":        "邊框",
+    "border_focus":  "焦點邊框",
+}
+
+# ------------------------------------------------------------------ #
+# 預設顏色
+# ------------------------------------------------------------------ #
+
+DARK_COLORS: dict[str, str] = {
+    "bg_window":    "#1e1e2e",
+    "bg_panel":     "#181825",
+    "bg_input":     "#181825",
+    "bg_button":    "#313244",
+    "bg_hover":     "#45475a",
+    "bg_pressed":   "#585b70",
+    "bg_select":    "#45475a",
+    "bg_menubar":   "#181825",
+    "bg_statusbar": "#181825",
+    "fg_text":      "#cdd6f4",
+    "fg_dim":       "#a6adc8",
+    "fg_accent":    "#89b4fa",
+    "fg_disabled":  "#6c7086",
+    "border":       "#45475a",
+    "border_focus": "#89b4fa",
+}
+
+LIGHT_COLORS: dict[str, str] = {
+    "bg_window":    "#eff1f5",
+    "bg_panel":     "#dce0e8",
+    "bg_input":     "#dce0e8",
+    "bg_button":    "#dce0e8",
+    "bg_hover":     "#ccd0da",
+    "bg_pressed":   "#acb0be",
+    "bg_select":    "#8caaee",
+    "bg_menubar":   "#dce0e8",
+    "bg_statusbar": "#dce0e8",
+    "fg_text":      "#4c4f69",
+    "fg_dim":       "#6c6f85",
+    "fg_accent":    "#1e66f5",
+    "fg_disabled":  "#9ca0b0",
+    "border":       "#ccd0da",
+    "border_focus": "#1e66f5",
+}
+
+# 內建主題顏色對應表
+BUILTIN_THEME_COLORS: dict[str, dict[str, str]] = {
+    "Dark":  DARK_COLORS,
+    "Light": LIGHT_COLORS,
+}
+
+# ------------------------------------------------------------------ #
+# QSS 模板（使用 .format(**colors) 填入）
+# ------------------------------------------------------------------ #
+
+QSS_TEMPLATE = """\
+QMainWindow, QDialog, QWidget {{
+    background-color: {bg_window};
+    color: {fg_text};
     font-family: "Segoe UI", sans-serif;
     font-size: 10pt;
-}
+}}
 
-QMenuBar {
-    background-color: #181825;
-    color: #cdd6f4;
-    border-bottom: 1px solid #313244;
-}
-QMenuBar::item:selected { background-color: #313244; }
+QMenuBar {{
+    background-color: {bg_menubar};
+    color: {fg_text};
+    border-bottom: 1px solid {border};
+}}
+QMenuBar::item:selected {{ background-color: {bg_button}; }}
 
-QMenu {
-    background-color: #1e1e2e;
-    border: 1px solid #45475a;
-    color: #cdd6f4;
-}
-QMenu::item:selected { background-color: #313244; }
+QMenu {{
+    background-color: {bg_window};
+    border: 1px solid {border};
+    color: {fg_text};
+}}
+QMenu::item:selected {{ background-color: {bg_button}; }}
 
-QTableView, QTreeView, QListView {
-    background-color: #181825;
-    alternate-background-color: #1e1e2e;
-    color: #cdd6f4;
-    gridline-color: #313244;
-    border: 1px solid #45475a;
-    selection-background-color: #45475a;
-    selection-color: #cdd6f4;
-}
-QHeaderView::section {
-    background-color: #313244;
-    color: #cdd6f4;
+QTableView, QTreeView, QListView {{
+    background-color: {bg_panel};
+    alternate-background-color: {bg_window};
+    color: {fg_text};
+    gridline-color: {border};
+    border: 1px solid {border};
+    selection-background-color: {bg_select};
+    selection-color: {fg_text};
+}}
+QHeaderView::section {{
+    background-color: {bg_button};
+    color: {fg_text};
     border: none;
     padding: 4px;
-}
+}}
 
-QPushButton {
-    background-color: #313244;
-    color: #cdd6f4;
-    border: 1px solid #45475a;
+QPushButton {{
+    background-color: {bg_button};
+    color: {fg_text};
+    border: 1px solid {border};
     border-radius: 4px;
     padding: 4px 12px;
     min-height: 22px;
-}
-QPushButton:hover { background-color: #45475a; }
-QPushButton:pressed { background-color: #585b70; }
-QPushButton:disabled { color: #6c7086; }
+}}
+QPushButton:hover    {{ background-color: {bg_hover}; }}
+QPushButton:pressed  {{ background-color: {bg_pressed}; }}
+QPushButton:disabled {{ color: {fg_disabled}; }}
 
-QLineEdit, QTextEdit, QPlainTextEdit {
-    background-color: #181825;
-    color: #cdd6f4;
-    border: 1px solid #45475a;
+QLineEdit, QTextEdit, QPlainTextEdit {{
+    background-color: {bg_input};
+    color: {fg_text};
+    border: 1px solid {border};
     border-radius: 4px;
     padding: 3px;
-}
-QLineEdit:focus { border-color: #89b4fa; }
+}}
+QLineEdit:focus {{ border-color: {border_focus}; }}
 
-QComboBox {
-    background-color: #313244;
-    color: #cdd6f4;
-    border: 1px solid #45475a;
+QComboBox {{
+    background-color: {bg_button};
+    color: {fg_text};
+    border: 1px solid {border};
     border-radius: 4px;
     padding: 3px 6px;
-}
-QComboBox::drop-down { border: none; }
-QComboBox QAbstractItemView { background-color: #1e1e2e; color: #cdd6f4; }
+}}
+QComboBox::drop-down {{ border: none; }}
+QComboBox QAbstractItemView {{ background-color: {bg_window}; color: {fg_text}; }}
 
-QCheckBox { color: #cdd6f4; }
-QCheckBox::indicator { width: 14px; height: 14px; border: 1px solid #45475a; border-radius: 2px; background: #181825; }
-QCheckBox::indicator:checked { background: #89b4fa; }
+QCheckBox {{ color: {fg_text}; }}
+QCheckBox::indicator {{
+    width: 14px; height: 14px;
+    border: 1px solid {border};
+    border-radius: 2px;
+    background: {bg_input};
+}}
+QCheckBox::indicator:checked {{ background: {fg_accent}; }}
 
-QTabWidget::pane { border: 1px solid #45475a; }
-QTabBar::tab {
-    background: #313244;
-    color: #cdd6f4;
+QTabWidget::pane {{ border: 1px solid {border}; }}
+QTabBar::tab {{
+    background: {bg_button};
+    color: {fg_text};
     padding: 6px 16px;
-    border: 1px solid #45475a;
-}
-QTabBar::tab:selected { background: #45475a; color: #89b4fa; }
+    border: 1px solid {border};
+}}
+QTabBar::tab:selected {{ background: {bg_hover}; color: {fg_accent}; }}
 
-QScrollBar:vertical {
-    background: #181825;
+QScrollBar:vertical {{
+    background: {bg_panel};
     width: 10px;
     border: none;
-}
-QScrollBar::handle:vertical { background: #45475a; border-radius: 5px; min-height: 20px; }
-QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical { height: 0; }
+}}
+QScrollBar::handle:vertical {{
+    background: {bg_hover};
+    border-radius: 5px;
+    min-height: 20px;
+}}
+QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {{ height: 0; }}
 
-QStatusBar { background-color: #181825; color: #a6adc8; }
+QStatusBar {{ background-color: {bg_statusbar}; color: {fg_dim}; }}
 
-QGroupBox {
-    color: #89b4fa;
-    border: 1px solid #45475a;
+QGroupBox {{
+    color: {fg_accent};
+    border: 1px solid {border};
     border-radius: 4px;
     margin-top: 8px;
     padding-top: 8px;
-}
-QGroupBox::title { subcontrol-origin: margin; left: 8px; }
+}}
+QGroupBox::title {{ subcontrol-origin: margin; left: 8px; }}
 
-QSplitter::handle { background: #313244; }
-QProgressBar {
-    background-color: #181825;
-    border: 1px solid #45475a;
+QSplitter::handle {{ background: {bg_button}; }}
+
+QProgressBar {{
+    background-color: {bg_panel};
+    border: 1px solid {border};
     border-radius: 4px;
     text-align: center;
-    color: #cdd6f4;
-}
-QProgressBar::chunk { background-color: #89b4fa; border-radius: 3px; }
+    color: {fg_text};
+}}
+QProgressBar::chunk {{ background-color: {fg_accent}; border-radius: 3px; }}
 
-QToolTip { background-color: #313244; color: #cdd6f4; border: 1px solid #45475a; }
+QToolTip {{ background-color: {bg_button}; color: {fg_text}; border: 1px solid {border}; }}
+
+QToolBar {{ background-color: {bg_menubar}; border-bottom: 1px solid {border}; spacing: 4px; }}
+QToolBar QLabel {{ color: {fg_text}; }}
+
+QSpinBox {{
+    background-color: {bg_input};
+    color: {fg_text};
+    border: 1px solid {border};
+    border-radius: 4px;
+    padding: 2px 4px;
+}}
 """
 
-LIGHT_THEME = """
-QMainWindow, QDialog, QWidget {
-    background-color: #eff1f5;
-    color: #4c4f69;
-    font-family: "Segoe UI", sans-serif;
-    font-size: 10pt;
-}
-QMenuBar { background-color: #dce0e8; color: #4c4f69; border-bottom: 1px solid #ccd0da; }
-QMenuBar::item:selected { background-color: #ccd0da; }
-QMenu { background-color: #eff1f5; border: 1px solid #ccd0da; color: #4c4f69; }
-QMenu::item:selected { background-color: #ccd0da; }
-QTableView, QTreeView, QListView {
-    background-color: #dce0e8;
-    alternate-background-color: #eff1f5;
-    color: #4c4f69;
-    gridline-color: #ccd0da;
-    border: 1px solid #ccd0da;
-    selection-background-color: #8caaee;
-    selection-color: #eff1f5;
-}
-QHeaderView::section { background-color: #ccd0da; color: #4c4f69; border: none; padding: 4px; }
-QPushButton {
-    background-color: #dce0e8;
-    color: #4c4f69;
-    border: 1px solid #ccd0da;
-    border-radius: 4px;
-    padding: 4px 12px;
-    min-height: 22px;
-}
-QPushButton:hover { background-color: #ccd0da; }
-QPushButton:pressed { background-color: #acb0be; }
-QLineEdit, QTextEdit, QPlainTextEdit {
-    background-color: #dce0e8;
-    color: #4c4f69;
-    border: 1px solid #ccd0da;
-    border-radius: 4px;
-    padding: 3px;
-}
-"""
 
-THEMES = {
-    "Dark": DARK_THEME,
-    "Light": LIGHT_THEME,
+def colors_to_qss(colors: dict[str, str]) -> str:
+    """將顏色 token dict 轉換為 QSS 字串。"""
+    return QSS_TEMPLATE.format(**colors)
+
+
+# ------------------------------------------------------------------ #
+# THEMES dict（向後相容）
+# ------------------------------------------------------------------ #
+
+THEMES: dict[str, str] = {
+    name: colors_to_qss(colors)
+    for name, colors in BUILTIN_THEME_COLORS.items()
 }

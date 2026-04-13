@@ -6,9 +6,9 @@
 from __future__ import annotations
 
 from PySide6.QtWidgets import (
-    QDialog, QVBoxLayout, QTabWidget, QWidget, QFormLayout,
+    QDialog, QVBoxLayout, QHBoxLayout, QTabWidget, QWidget, QFormLayout,
     QLabel, QLineEdit, QCheckBox, QSpinBox, QComboBox,
-    QDialogButtonBox, QGroupBox,
+    QDialogButtonBox, QGroupBox, QPushButton,
 )
 
 from core.settings import get_settings
@@ -33,10 +33,18 @@ class SettingsDialog(QDialog):
         gen_tab = QWidget()
         gen_form = QFormLayout(gen_tab)
 
+        theme_row = QWidget()
+        theme_hl = QHBoxLayout(theme_row)
+        theme_hl.setContentsMargins(0, 0, 0, 0)
         self._theme = QComboBox()
         self._theme.addItems(get_theme_names())
+        theme_hl.addWidget(self._theme, 1)
+        self._btn_theme_editor = QPushButton("編輯…")
+        self._btn_theme_editor.setFixedWidth(56)
+        self._btn_theme_editor.clicked.connect(self._open_theme_editor)
+        theme_hl.addWidget(self._btn_theme_editor)
         self._lbl_theme = QLabel()
-        gen_form.addRow(self._lbl_theme, self._theme)
+        gen_form.addRow(self._lbl_theme, theme_row)
 
         self._language = QComboBox()
         for code, name in LANGUAGE_NAMES.items():
@@ -195,3 +203,15 @@ class SettingsDialog(QDialog):
         get_i18n().set_language(new_lang)
 
         self.accept()
+
+    def _open_theme_editor(self):
+        from gui.dialogs.theme_editor_dialog import ThemeEditorDialog
+        dlg = ThemeEditorDialog(self)
+        dlg.exec()
+        # 編輯器關閉後刷新主題下拉（可能新增了自訂主題）
+        current = self._theme.currentText()
+        self._theme.clear()
+        self._theme.addItems(get_theme_names())
+        idx = self._theme.findText(current)
+        if idx >= 0:
+            self._theme.setCurrentIndex(idx)
