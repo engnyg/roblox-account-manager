@@ -57,22 +57,49 @@ def set_background_widget(widget):
     _bg_widget = widget
 
 
+def _hex_to_rgba(hex_color: str, alpha: int) -> str:
+    """將 #rrggbb 轉為 rgba(r,g,b,alpha)，解析失敗時回傳預設深色。"""
+    try:
+        h = hex_color.lstrip("#")
+        if len(h) == 3:
+            h = "".join(c * 2 for c in h)
+        r, g, b = int(h[0:2], 16), int(h[2:4], 16), int(h[4:6], 16)
+        return f"rgba({r},{g},{b},{alpha})"
+    except Exception:
+        return f"rgba(15,15,25,{alpha})"
+
+
 def apply_theme(theme_name: str | None = None):
     """套用主題（QSS + 背景）到整個 QApplication。"""
     settings = get_settings()
     name = theme_name or settings.get("General", "Theme", "Dark")
     qss = THEMES.get(name, THEMES["Dark"])
+
+    # 套用背景設定
+    bg_info = get_theme_background(name)
+    path    = bg_info.get("path", "")
+    opacity = bg_info.get("opacity", 0.5)
+    has_bg  = bool(path and os.path.isfile(path))
+
+    # 有背景圖時：追加 QSS 讓容器半透明，圖片才能透出
+    # Liquid Glass 本身已有 rgba，不需覆蓋
+    if has_bg and name != "Liquid Glass":
+        colors      = get_theme_colors(name)
+        panel_rgba  = _hex_to_rgba(colors.get("bg_panel",  "#181825"), 170)
+        window_rgba = _hex_to_rgba(colors.get("bg_window", "#1e1e2e"), 140)
+        qss += (
+            f"\nQTableView, QTreeView, QListView {{"
+            f" background-color: {panel_rgba};"
+            f" alternate-background-color: {window_rgba}; }}"
+        )
+
     app = QApplication.instance()
     if app:
         app.setStyleSheet(qss)
     settings.set("General", "Theme", name)
 
-    # 套用背景
     if _bg_widget is not None:
-        bg_info = get_theme_background(name)
-        path    = bg_info.get("path", "")
-        opacity = bg_info.get("opacity", 0.5)
-        if path and os.path.isfile(path):
+        if has_bg:
             _bg_widget.set_source(path, opacity)
         else:
             _bg_widget.clear()
