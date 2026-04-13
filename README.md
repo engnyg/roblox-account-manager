@@ -1,6 +1,8 @@
 # Roblox Account Manager V2
 
-以 Python/PySide6 重寫的 Roblox 多帳號管理工具，原版為 ic3w0lf22 的 C# 專案 [Roblox Account Manager](https://github.com/ic3w0lf22/Roblox-Account-Manager)。
+以 Python/PySide6 重寫的 Roblox 多帳號管理工具，靈感來自以下兩個原版專案：
+- [ic3w0lf22/Roblox-Account-Manager](https://github.com/ic3w0lf22/Roblox-Account-Manager) — C# 帳號管理器
+- [qing762/roblox-auto-signup](https://github.com/qing762/roblox-auto-signup) — 自動註冊腳本
 
 ## 功能
 
@@ -65,7 +67,8 @@ pyinstaller build.spec
 
 ## 致謝
 
-- 原版 C# 專案：[ic3w0lf22/Roblox-Account-Manager](https://github.com/ic3w0lf22/Roblox-Account-Manager)
+- 原版帳號管理器：[ic3w0lf22/Roblox-Account-Manager](https://github.com/ic3w0lf22/Roblox-Account-Manager)
+- 原版自動註冊：[qing762/roblox-auto-signup](https://github.com/qing762/roblox-auto-signup)
 - 驗證碼解題：[NopeCHA](https://nopecha.com)
 
 ## 免責聲明
