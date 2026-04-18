@@ -32,7 +32,7 @@ class BackgroundCentralWidget(QWidget):
         self._pixmap:  QPixmap | None = None
         self._movie    = None   # QMovie
         self._player   = None   # QMediaPlayer
-        self._video_widget = None  # QVideoWidget
+        self._video_sink = None  # QVideoSink（取代 QVideoWidget，避免原生視窗覆蓋子控件）
 
     # ------------------------------------------------------------------ #
     # Public API
@@ -68,10 +68,8 @@ class BackgroundCentralWidget(QWidget):
         if self._player:
             self._player.stop()
             self._player = None
-        if self._video_widget:
-            self._video_widget.hide()
-            self._video_widget.deleteLater()
-            self._video_widget = None
+        if self._video_sink:
+            self._video_sink = None
         self._pixmap = None
 
     def _setup_image(self, path: str):
@@ -86,27 +84,19 @@ class BackgroundCentralWidget(QWidget):
 
     def _setup_video(self, path: str):
         try:
-            from PySide6.QtMultimedia import QMediaPlayer, QAudioOutput
-            from PySide6.QtMultimediaWidgets import QVideoWidget
+            from PySide6.QtMultimedia import QMediaPlayer, QAudioOutput, QVideoSink, QVideoFrame
             from PySide6.QtCore import QUrl
-            from PySide6.QtWidgets import QGraphicsOpacityEffect
-
-            vw = QVideoWidget(self)
-            vw.setGeometry(self.rect())
-            vw.lower()
-
-            eff = QGraphicsOpacityEffect(vw)
-            eff.setOpacity(self._opacity)
-            vw.setGraphicsEffect(eff)
-            vw.show()
-            self._video_widget = vw
 
             audio = QAudioOutput(self)
             audio.setVolume(0)
 
+            sink = QVideoSink(self)
+            sink.videoFrameChanged.connect(self._on_video_frame)
+            self._video_sink = sink
+
             player = QMediaPlayer(self)
             player.setAudioOutput(audio)
-            player.setVideoOutput(vw)
+            player.setVideoOutput(sink)
             player.setSource(QUrl.fromLocalFile(os.path.abspath(path)))
             player.mediaStatusChanged.connect(
                 lambda s: player.play()
@@ -117,22 +107,23 @@ class BackgroundCentralWidget(QWidget):
         except (ImportError, Exception):
             pass
 
+    def _on_video_frame(self, frame):
+        try:
+            img = frame.toImage()
+            if not img.isNull():
+                self._pixmap = QPixmap.fromImage(img)
+                self.update()
+        except Exception:
+            pass
+
     # ------------------------------------------------------------------ #
     # Qt events
     # ------------------------------------------------------------------ #
 
     def resizeEvent(self, event):
         super().resizeEvent(event)
-        if self._video_widget:
-            self._video_widget.setGeometry(self.rect())
-            self._video_widget.lower()
 
     def paintEvent(self, event: QPaintEvent):
-        # 影片由 QVideoWidget 自行渲染
-        if self._video_widget:
-            super().paintEvent(event)
-            return
-
         pixmap: QPixmap | None = None
         if self._movie:
             pixmap = self._movie.currentPixmap()
