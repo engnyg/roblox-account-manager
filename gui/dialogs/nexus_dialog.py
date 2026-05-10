@@ -5,12 +5,70 @@ Nexus 控制面板對話框。
 
 from __future__ import annotations
 
-from PySide6.QtCore import Qt, QTimer
+from PySide6.QtCore import Qt, QTimer, QSize
+from PySide6.QtGui import QColor, QIcon, QPainter, QBrush
 from core.i18n import tr, get_i18n
 from PySide6.QtWidgets import (
     QDialog, QVBoxLayout, QHBoxLayout, QTableWidget, QTableWidgetItem,
     QPushButton, QLineEdit, QLabel, QHeaderView, QWidget,
+    QStyledItemDelegate, QStyleOptionViewItem,
 )
+from PySide6.QtCore import QModelIndex
+
+_icon_cache: dict[str, QIcon | None] = {}
+
+
+def _fluent_icon(icon_name: str, color: str) -> QIcon | None:
+    key = f"{icon_name}@{color}"
+    if key not in _icon_cache:
+        result = None
+        try:
+            from qfluentwidgets import FluentIcon as FIF
+            from PySide6.QtGui import QColor as _QColor
+            raw = getattr(FIF, icon_name).icon(color=_QColor(color))
+            pm = raw.pixmap(16, 16)
+            if not pm.isNull():
+                result = QIcon(pm)
+        except Exception:
+            pass
+        _icon_cache[key] = result
+    return _icon_cache[key]
+
+
+class _ConnectedDelegate(QStyledItemDelegate):
+    """在 Connected 列直接绘制图标，回退为彩色圆点。"""
+
+    # 每行的连接状态由外部通过 Qt.UserRole 传入（True/False）
+    def paint(self, painter: QPainter, option: QStyleOptionViewItem,
+              index: QModelIndex) -> None:
+        super().paint(painter, option, index)
+
+        connected = index.data(Qt.UserRole)
+        if connected is None:
+            return
+
+        icon = _fluent_icon(
+            "ACCEPT" if connected else "CANCEL",
+            "#a6e3a1" if connected else "#f38ba8",
+        )
+
+        painter.save()
+        if icon:
+            icon.paint(painter, option.rect, Qt.AlignCenter)
+        else:
+            color = QColor("#a6e3a1" if connected else "#f38ba8")
+            painter.setRenderHint(QPainter.Antialiasing)
+            painter.setBrush(QBrush(color))
+            painter.setPen(Qt.NoPen)
+            r = option.rect
+            d = 10
+            x = r.x() + (r.width() - d) // 2
+            y = r.y() + (r.height() - d) // 2
+            painter.drawEllipse(x, y, d, d)
+        painter.restore()
+
+    def sizeHint(self, option: QStyleOptionViewItem, index: QModelIndex) -> QSize:
+        return QSize(32, super().sizeHint(option, index).height())
 
 
 class NexusDialog(QDialog):
@@ -32,6 +90,7 @@ class NexusDialog(QDialog):
         self._table = QTableWidget(0, 3)
         self._table.horizontalHeader().setSectionResizeMode(0, QHeaderView.Stretch)
         self._table.setEditTriggers(QTableWidget.NoEditTriggers)
+        self._table.setItemDelegateForColumn(2, _ConnectedDelegate(self._table))
         layout.addWidget(self._table)
 
         cmd_layout = QHBoxLayout()
@@ -64,8 +123,10 @@ class NexusDialog(QDialog):
         for row, acc in enumerate(accounts):
             self._table.setItem(row, 0, QTableWidgetItem(acc.username))
             self._table.setItem(row, 1, QTableWidgetItem(acc.in_game_job_id))
-            status = "✓" if acc.is_connected else "✗"
-            self._table.setItem(row, 2, QTableWidgetItem(status))
+            # 将连接状态存入 UserRole，delegate 读取后绘制
+            status_item = QTableWidgetItem()
+            status_item.setData(Qt.UserRole, acc.is_connected)
+            self._table.setItem(row, 2, status_item)
 
     def _execute(self):
         import asyncio

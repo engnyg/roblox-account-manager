@@ -8,11 +8,12 @@ from __future__ import annotations
 from typing import Any
 
 from PySide6.QtCore import (
-    QAbstractTableModel, QModelIndex, Qt, Signal, QSortFilterProxyModel,
+    QAbstractTableModel, QModelIndex, Qt, Signal, QSortFilterProxyModel, QSize,
 )
-from PySide6.QtGui import QColor, QFont
+from PySide6.QtGui import QColor, QFont, QIcon, QPainter, QBrush
 from PySide6.QtWidgets import (
     QTableView, QAbstractItemView, QHeaderView, QMenu, QWidget,
+    QStyledItemDelegate, QStyleOptionViewItem,
 )
 
 from core.account import Account
@@ -26,6 +27,64 @@ COLUMN_KEYS = [
     ("Last Use", "last_use"),
     ("Valid", "valid"),
 ]
+
+VALID_COL = next(i for i, (_, k) in enumerate(COLUMN_KEYS) if k == "valid")
+
+# Lazy icon cache — created after QApplication exists
+_icon_cache: dict[str, QIcon | None] = {}
+
+
+def _fluent_icon(icon_name: str, color: str) -> QIcon | None:
+    key = f"{icon_name}@{color}"
+    if key not in _icon_cache:
+        result = None
+        try:
+            from qfluentwidgets import FluentIcon as FIF
+            from PySide6.QtGui import QColor as _QColor
+            raw = getattr(FIF, icon_name).icon(color=_QColor(color))
+            pm = raw.pixmap(16, 16)
+            if not pm.isNull():
+                result = QIcon(pm)
+        except Exception:
+            pass
+        _icon_cache[key] = result
+    return _icon_cache[key]
+
+
+class _ValidDelegate(QStyledItemDelegate):
+    """在 Valid 列直接绘制 FluentIcon，回退为彩色圆点。"""
+
+    def paint(self, painter: QPainter, option: QStyleOptionViewItem,
+              index: QModelIndex) -> None:
+        super().paint(painter, option, index)  # 绘制底色 / 选中高亮
+
+        acc: Account | None = index.data(Qt.UserRole)
+        if not isinstance(acc, Account):
+            return
+
+        icon = _fluent_icon(
+            "ACCEPT" if acc.valid else "CANCEL",
+            "#a6e3a1" if acc.valid else "#f38ba8",
+        )
+
+        painter.save()
+        if icon:
+            icon.paint(painter, option.rect, Qt.AlignCenter)
+        else:
+            # 回退：彩色实心圆点
+            color = QColor("#a6e3a1" if acc.valid else "#f38ba8")
+            painter.setRenderHint(QPainter.Antialiasing)
+            painter.setBrush(QBrush(color))
+            painter.setPen(Qt.NoPen)
+            r = option.rect
+            d = 10
+            x = r.x() + (r.width() - d) // 2
+            y = r.y() + (r.height() - d) // 2
+            painter.drawEllipse(x, y, d, d)
+        painter.restore()
+
+    def sizeHint(self, option: QStyleOptionViewItem, index: QModelIndex) -> QSize:
+        return QSize(32, super().sizeHint(option, index).height())
 
 
 class AccountTableModel(QAbstractTableModel):
@@ -65,13 +124,8 @@ class AccountTableModel(QAbstractTableModel):
             if col_name == "last_use" and val:
                 return val.strftime("%Y-%m-%d %H:%M")
             if col_name == "valid":
-                return "✓" if val else "✗"
+                return ""   # delegate 负责绘制
             return str(val) if val else ""
-
-        if role == Qt.ForegroundRole:
-            if col_name == "valid":
-                return QColor("#a6e3a1") if acc.valid else QColor("#f38ba8")
-            return None
 
         if role == Qt.UserRole:
             return acc
@@ -108,6 +162,9 @@ class AccountTable(QTableView):
         self.horizontalHeader().setSectionResizeMode(0, QHeaderView.Stretch)
         for i in range(1, len(COLUMN_KEYS)):
             self.horizontalHeader().setSectionResizeMode(i, QHeaderView.ResizeToContents)
+
+        # 用 delegate 直接绘制 Valid 列图标，绕开 DecorationRole
+        self.setItemDelegateForColumn(VALID_COL, _ValidDelegate(self))
 
         self.doubleClicked.connect(self._on_double_click)
         self.setContextMenuPolicy(Qt.CustomContextMenu)
