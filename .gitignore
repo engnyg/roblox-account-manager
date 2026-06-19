@@ -10,10 +10,8 @@ build/
 *.spec
 
 # Data & logs
-data/accounts.dat.json
-data/accounts.txt
-data/cookies.json
-data/roblox_acc.log
+data/
+accounts_info.txt
 
 # Sensitive config (optional: commit config.ini but exclude captcha keys etc.)
 # config.ini
