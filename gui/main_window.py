@@ -14,7 +14,7 @@ from PySide6.QtWidgets import (
     QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
     QLineEdit, QPushButton, QLabel, QStatusBar,
     QMenuBar, QMenu, QToolBar, QSplitter,
-    QGroupBox, QComboBox, QApplication, QMessageBox,
+    QGroupBox, QComboBox, QApplication, QMessageBox, QSizePolicy,
 )
 from PySide6.QtGui import QAction
 import qasync
@@ -39,6 +39,7 @@ class MainWindow(QMainWindow):
 
         self._setup_menu()
         self._setup_toolbar()
+        self._setup_vip_toolbar()
         self._setup_central()
         self._setup_statusbar()
 
@@ -100,6 +101,7 @@ class MainWindow(QMainWindow):
 
     def _setup_toolbar(self):
         self._toolbar = QToolBar("Main", self)
+        self._toolbar.setMovable(False)
         self.addToolBar(self._toolbar)
 
         self._lbl_search = QLabel("")
@@ -134,6 +136,31 @@ class MainWindow(QMainWindow):
         self._place_id.textChanged.connect(
             lambda text: self._settings.set("General", "LastPlaceID", text.strip())
         )
+
+    def _setup_vip_toolbar(self):
+        self._vip_toolbar = QToolBar("VIP Server", self)
+        self._vip_toolbar.setMovable(False)
+        self.addToolBarBreak(Qt.TopToolBarArea)
+        self.addToolBar(Qt.TopToolBarArea, self._vip_toolbar)
+
+        self._lbl_vip = QLabel("")
+        self._vip_toolbar.addWidget(self._lbl_vip)
+
+        self._vip_link = QLineEdit()
+        self._vip_link.setMinimumWidth(150)
+        self._vip_link.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Preferred)
+        self._vip_link.textChanged.connect(self._on_vip_link_changed)
+        self._vip_toolbar.addWidget(self._vip_link)
+
+        self._vip_join_btn = QPushButton("")
+        self._vip_join_btn.setEnabled(False)
+        self._vip_join_btn.clicked.connect(self._join_private_server)
+        self._vip_toolbar.addWidget(self._vip_join_btn)
+
+        self._vip_resolve_btn = QPushButton("")
+        self._vip_resolve_btn.setEnabled(False)
+        self._vip_resolve_btn.clicked.connect(self._resolve_vip_job_id)
+        self._vip_toolbar.addWidget(self._vip_resolve_btn)
 
     def _setup_central(self):
         # BackgroundCentralWidget 本身就是 central widget，
@@ -201,6 +228,14 @@ class MainWindow(QMainWindow):
         self._job_id.setPlaceholderText(tr("Job ID (optional)"))
         self._join_btn.setText(tr("Join"))
 
+        # VIP toolbar
+        self._lbl_vip.setText(tr("Private Server: "))
+        self._vip_link.setPlaceholderText(
+            tr("Paste Roblox private server link...")
+        )
+        self._vip_join_btn.setText(tr("Join Private Server"))
+        self._vip_resolve_btn.setText(tr("Get Job ID"))
+
         # Table headers
         self._table.retranslate()
 
@@ -235,6 +270,12 @@ class MainWindow(QMainWindow):
         menu = QMenu(self)
         menu.addAction(tr("Join Server"), lambda: self._join_server_for(account))
         menu.addAction(tr("Server List"), lambda: self._open_server_list_for(account))
+        if self._vip_link.text().strip():
+            menu.addAction(tr("Join Private Server"), lambda: self._join_private_server_for(account))
+        menu.addSeparator()
+        menu.addAction(tr("Set Alias"), lambda: self._set_alias(account))
+        menu.addAction(tr("Set Group"), lambda: self._set_group(account))
+        menu.addAction(tr("Set Description"), lambda: self._set_description(account))
         menu.addSeparator()
         menu.addAction(tr("Account Tools"), lambda: self._open_account_utils_for(account))
         menu.addAction(tr("Custom Fields"), lambda: self._open_fields_for(account))
@@ -266,6 +307,75 @@ class MainWindow(QMainWindow):
         from manager.game_launcher import join_server
         ok, msg = join_server(account, place_id, job_id)
         self._status_label.setText(f"{account.username}: {msg}")
+
+    # -- VIP / private server --
+
+    def _on_vip_link_changed(self, text: str):
+        from manager.game_launcher import parse_private_server_url
+        place_id, link_code = parse_private_server_url(text.strip())
+        valid = link_code is not None  # share code 格式 place_id=None 也算有效
+        self._vip_join_btn.setEnabled(valid)
+        self._vip_resolve_btn.setEnabled(valid)
+        if valid and place_id is not None:
+            self._place_id.setText(str(place_id))
+
+    def _join_private_server(self):
+        account = self._table.selected_account()
+        if not account:
+            self._status_label.setText(tr("No account selected"))
+            return
+        self._join_private_server_for(account)
+
+    def _join_private_server_for(self, account: Account):
+        from manager.game_launcher import parse_private_server_url, join_private_server
+        place_id, link_code = parse_private_server_url(self._vip_link.text().strip())
+        if link_code is None:
+            self._status_label.setText(tr("Invalid private server link"))
+            return
+        ok, msg = join_private_server(account, place_id, link_code)
+        self._status_label.setText(f"{account.username}: {msg}")
+
+    def _resolve_vip_job_id(self):
+        account = self._table.selected_account()
+        if not account:
+            self._status_label.setText(tr("No account selected"))
+            return
+        from manager.game_launcher import parse_private_server_url
+        place_id, link_code = parse_private_server_url(self._vip_link.text().strip())
+        if link_code is None:
+            self._status_label.setText(tr("Invalid private server link"))
+            return
+
+        self._vip_resolve_btn.setEnabled(False)
+        self._status_label.setText(tr("Resolving job ID..."))
+
+        class _Worker(QObject):
+            done = Signal(bool, str)
+
+            def __init__(self, acc, pid, code):
+                super().__init__()
+                self._acc, self._pid, self._code = acc, pid, code
+
+            def run(self):
+                from manager.game_launcher import resolve_private_server_job_id
+                ok, result = resolve_private_server_job_id(self._acc, self._pid, self._code)
+                self.done.emit(ok, result)
+
+        self._vip_worker = _Worker(account, place_id, link_code)
+        self._vip_thread = QThread(self)
+        self._vip_worker.moveToThread(self._vip_thread)
+        self._vip_thread.started.connect(self._vip_worker.run)
+        self._vip_worker.done.connect(self._on_vip_resolved)
+        self._vip_worker.done.connect(lambda *_: self._vip_thread.quit())
+        self._vip_thread.finished.connect(lambda: self._vip_resolve_btn.setEnabled(True))
+        self._vip_thread.start()
+
+    def _on_vip_resolved(self, ok: bool, result: str):
+        if ok:
+            self._job_id.setText(result)
+            self._status_label.setText(f"Job ID: {result}")
+        else:
+            self._status_label.setText(f"{tr('Failed')}: {result}")
 
     def _import_accounts(self):
         from gui.dialogs.import_dialog import ImportDialog
@@ -447,6 +557,44 @@ class MainWindow(QMainWindow):
         self._refresh_table()
         self._save_accounts()
         self._status_label.setText(f"{tr('Removed')} {account.username}")
+
+    def _set_alias(self, account: Account):
+        from PySide6.QtWidgets import QInputDialog
+        text, ok = QInputDialog.getText(
+            self, tr("Set Alias"),
+            tr("Alias for") + f" {account.username}:",
+            text=account.alias,
+        )
+        if ok:
+            account.alias = text.strip()
+            self._refresh_table()
+            self._save_accounts()
+
+    def _set_group(self, account: Account):
+        from PySide6.QtWidgets import QInputDialog
+        groups = sorted({a.group for a in self._accounts if a.group}) or ["Default"]
+        text, ok = QInputDialog.getItem(
+            self, tr("Set Group"),
+            tr("Group for") + f" {account.username}:",
+            groups,
+            current=groups.index(account.group) if account.group in groups else 0,
+            editable=True,
+        )
+        if ok and text.strip():
+            account.group = text.strip()
+            self._refresh_table()
+            self._save_accounts()
+
+    def _set_description(self, account: Account):
+        from PySide6.QtWidgets import QInputDialog
+        text, ok = QInputDialog.getMultiLineText(
+            self, tr("Set Description"),
+            tr("Description for") + f" {account.username}:",
+            text=account.description,
+        )
+        if ok:
+            account.description = text.strip()
+            self._save_accounts()
 
     # ------------------------------------------------------------------ #
     # Servers

@@ -57,6 +57,22 @@ TRANSLATIONS: dict[str, dict[str, str]] = {
         "Open Browser": "開啟瀏覽器",
         "Copy Cookie": "複製 Cookie",
         "Remove": "移除",
+        "Set Alias": "設定別名",
+        "Set Group": "設定群組",
+        "Set Description": "設定描述",
+        "Join Private Server": "加入私人伺服器",
+        # Set Alias / Group / Description dialogs
+        "Alias for": "別名：",
+        "Group for": "群組：",
+        "Description for": "描述：",
+
+        # VIP toolbar
+        "Private Server: ": "私人伺服器：",
+        "Paste Roblox private server link...": "貼上 Roblox 私人伺服器連結...",
+        "Get Job ID": "取得 Job ID",
+        "Invalid private server link": "無效的私人伺服器連結",
+        "Resolving job ID...": "正在取得 Job ID...",
+        "Failed": "失敗",
 
         # === Account Table ===
         "Username": "使用者名稱",
