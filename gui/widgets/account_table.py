@@ -140,6 +140,28 @@ class AccountTableModel(QAbstractTableModel):
         self.headerDataChanged.emit(Qt.Horizontal, 0, self.columnCount() - 1)
 
 
+class _AccountFilterProxy(QSortFilterProxyModel):
+    """在文字搜尋之外，額外支援依 Group 篩選。"""
+
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self._group_filter = ""  # 空字串 = 不限群組
+
+    def set_group_filter(self, group: str):
+        self._group_filter = group or ""
+        self.invalidateFilter()
+
+    def filterAcceptsRow(self, source_row: int, source_parent: QModelIndex) -> bool:
+        if not super().filterAcceptsRow(source_row, source_parent):
+            return False
+        if self._group_filter:
+            model: AccountTableModel = self.sourceModel()
+            acc = model.get_account(source_row)
+            if not acc or acc.group != self._group_filter:
+                return False
+        return True
+
+
 class AccountTable(QTableView):
     account_double_clicked = Signal(Account)
     context_menu_requested = Signal(Account, object)  # Account, QPoint
@@ -147,7 +169,7 @@ class AccountTable(QTableView):
     def __init__(self, parent: QWidget | None = None):
         super().__init__(parent)
         self._model = AccountTableModel()
-        self._proxy = QSortFilterProxyModel(self)
+        self._proxy = _AccountFilterProxy(self)
         self._proxy.setSourceModel(self._model)
         self._proxy.setFilterCaseSensitivity(Qt.CaseInsensitive)
         self._proxy.setFilterKeyColumn(-1)  # 搜尋所有欄位
@@ -175,6 +197,14 @@ class AccountTable(QTableView):
 
     def filter(self, text: str):
         self._proxy.setFilterFixedString(text)
+
+    def set_group_filter(self, group: str):
+        self._proxy.set_group_filter(group)
+
+    def accounts_in_group(self, group: str) -> list[Account]:
+        if not group:
+            return list(self._model._accounts)
+        return [a for a in self._model._accounts if a.group == group]
 
     def selected_accounts(self) -> list[Account]:
         result = []

@@ -386,6 +386,59 @@ def join_private_server(
         return False, str(e)
 
 
+def _validate_job_id(
+    account: "Account",
+    place_id: int,
+    job_id: str,
+    tracker: str,
+) -> tuple[bool, str]:
+    """
+    透過 gamejoin API 驗證指定的 Job ID 目前是否仍可加入。
+    舊版 PlaceLauncher.ashx RequestGameJob 對已失效/已滿/已關閉的 Job ID
+    仍會回傳「Success」（因為它只是啟動 Roblox 客戶端，並不驗證伺服器是否存在），
+    導致使用者誤以為「Job ID 沒用」。這裡先用官方 gamejoin API 主動驗證，
+    才能回報真正的失敗原因。
+    返回 (ok, message)。
+    """
+    ok, csrf = account.get_csrf_token()
+    if not ok:
+        return False, f"取得 CSRF token 失敗: {csrf}"
+
+    cookies = {".ROBLOSECURITY": account.security_token}
+    headers = {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+        "X-CSRF-TOKEN": csrf,
+        "Origin": "https://www.roblox.com",
+        "Referer": f"https://www.roblox.com/games/{place_id}",
+        "Accept": "application/json, text/plain, */*",
+    }
+    body = {
+        "placeId": place_id,
+        "gameId": job_id,
+        "gameJoinAttemptId": job_id,
+        "isPlayTogetherGame": False,
+        "isTeleport": False,
+        "isPartyLeader": False,
+        "gamerTag": "",
+        "browserTrackerId": int(tracker) if tracker.isdigit() else 0,
+    }
+    try:
+        r = httpx.post(
+            "https://gamejoin.roblox.com/v1/join-game-instance",
+            json=body, cookies=cookies, headers=headers, timeout=15,
+        )
+        if not r.is_success:
+            return False, f"HTTP {r.status_code}: {r.text[:200]}"
+        data = r.json()
+        status = data.get("status", -1)
+        logger.debug(f"[{account.username}] join-game-instance status={status} msg={data.get('message')}")
+        if status == 2:
+            return True, "OK"
+        return False, f"Job ID 已失效或無法加入（status={status}）：{data.get('message', '')}"
+    except Exception as e:
+        return False, str(e)
+
+
 def join_server(
     account: "Account",
     place_id: int,
@@ -406,6 +459,11 @@ def join_server(
 
     tracker = account.browser_tracker_id
     launch_time = int(time.time() * 1000)
+
+    if job_id and not follow_user:
+        ok_valid, msg = _validate_job_id(account, place_id, job_id, tracker)
+        if not ok_valid:
+            return False, msg
 
     try:
         if follow_user:

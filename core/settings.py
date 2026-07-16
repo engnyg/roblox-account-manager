@@ -24,6 +24,10 @@ _defaults = {
         "MaxFPSValue": "120",
         "Theme": "Dark",
     },
+    "AntiAFK": {
+        "Enabled": "false",
+        "IntervalSeconds": "120",
+    },
     "WebServer": {
         "Enabled": "false",
         "Password": "",

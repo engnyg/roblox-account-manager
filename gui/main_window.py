@@ -36,6 +36,8 @@ class MainWindow(QMainWindow):
         self._settings = get_settings()
         self._nexus_server = None
         self._web_server = None
+        from manager.anti_afk import AntiAFK
+        self._anti_afk = AntiAFK(interval=self._settings.get_int("AntiAFK", "IntervalSeconds", 120))
 
         self._setup_menu()
         self._setup_toolbar()
@@ -51,6 +53,9 @@ class MainWindow(QMainWindow):
         # 啟動時自動開啟 Multi-Roblox
         from manager.multi_roblox import enable_multi_roblox
         enable_multi_roblox()
+
+        if self._settings.get_bool("AntiAFK", "Enabled", False):
+            self._anti_afk.start()
 
         # 語言切換時重新整理 UI 文字
         get_i18n().language_changed.connect(self._retranslate_ui)
@@ -82,12 +87,17 @@ class MainWindow(QMainWindow):
         self._act_join = self._add_action(self._menu_game, "", self._join_server)
         self._act_servers = self._add_action(self._menu_game, "", self._open_server_list)
         self._act_find = self._add_action(self._menu_game, "", self._find_player)
+        self._act_charts = self._add_action(self._menu_game, "", self._open_game_charts)
         self._menu_game.addSeparator()
         self._act_multi = self._add_action(self._menu_game, "", self._toggle_multi_roblox)
         self._act_fps = self._add_action(self._menu_game, "", self._toggle_fps_unlock)
+        self._act_afk = self._add_action(self._menu_game, "", self._toggle_anti_afk)
+        self._act_afk.setCheckable(True)
+        self._act_afk.setChecked(self._settings.get_bool("AntiAFK", "Enabled", False))
 
         self._menu_tools = mb.addMenu("")
         self._act_nexus = self._add_action(self._menu_tools, "", self._open_nexus)
+        self._act_mixer = self._add_action(self._menu_tools, "", self._open_mixer)
         self._menu_tools.addSeparator()
         self._act_theme = self._add_action(self._menu_tools, "", self._open_theme_editor)
         self._act_settings = self._add_action(self._menu_tools, "", self._open_settings)
@@ -110,6 +120,19 @@ class MainWindow(QMainWindow):
         self._search.setMaximumWidth(200)
         self._search.textChanged.connect(self._on_search)
         self._toolbar.addWidget(self._search)
+
+        self._toolbar.addSeparator()
+
+        self._lbl_group = QLabel("")
+        self._toolbar.addWidget(self._lbl_group)
+        self._group_combo = QComboBox()
+        self._group_combo.setMinimumWidth(120)
+        self._group_combo.addItem(tr("All Groups"), "")
+        self._group_combo.currentIndexChanged.connect(self._on_group_changed)
+        self._toolbar.addWidget(self._group_combo)
+        self._launch_group_btn = QPushButton("")
+        self._launch_group_btn.clicked.connect(self._launch_group)
+        self._toolbar.addWidget(self._launch_group_btn)
 
         self._toolbar.addSeparator()
 
@@ -210,11 +233,14 @@ class MainWindow(QMainWindow):
         self._act_join.setText(tr("Join Server"))
         self._act_servers.setText(tr("Server List"))
         self._act_find.setText(tr("Find Player"))
+        self._act_charts.setText(tr("Game Charts"))
         self._act_multi.setText(tr("Multi-Roblox"))
         self._act_fps.setText(tr("FPS Unlocker"))
+        self._act_afk.setText(tr("Anti-AFK"))
 
         self._menu_tools.setTitle(tr("Tools"))
         self._act_nexus.setText(tr("Nexus Control"))
+        self._act_mixer.setText(tr("Mixer"))
         self._act_theme.setText(tr("Theme Editor"))
         self._act_settings.setText(tr("Settings"))
         self._act_update.setText(tr("Check for Updates"))
@@ -222,6 +248,9 @@ class MainWindow(QMainWindow):
         # Toolbar
         self._lbl_search.setText(tr("Search: "))
         self._search.setPlaceholderText(tr("Filter accounts..."))
+        self._lbl_group.setText(tr("Group: "))
+        self._group_combo.setItemText(0, tr("All Groups"))
+        self._launch_group_btn.setText(tr("Launch Group"))
         self._lbl_place.setText(tr("Place ID: "))
         self._place_id.setPlaceholderText(tr("Place ID"))
         self._lbl_job.setText(tr("Job ID: "))
@@ -255,12 +284,51 @@ class MainWindow(QMainWindow):
     def _refresh_table(self):
         self._table.set_accounts(self._accounts)
         self._account_count_label.setText(f"{len(self._accounts)} {tr('accounts')}")
+        self._refresh_group_combo()
+
+    def _refresh_group_combo(self):
+        current = self._group_combo.currentData()
+        groups = sorted({a.group for a in self._accounts if a.group})
+        self._group_combo.blockSignals(True)
+        self._group_combo.clear()
+        self._group_combo.addItem(tr("All Groups"), "")
+        for g in groups:
+            self._group_combo.addItem(g, g)
+        idx = self._group_combo.findData(current) if current else 0
+        self._group_combo.setCurrentIndex(idx if idx >= 0 else 0)
+        self._group_combo.blockSignals(False)
 
     def _save_accounts(self):
         save_accounts(self._accounts)
 
     def _on_search(self, text: str):
         self._table.filter(text)
+
+    def _on_group_changed(self, _index: int):
+        self._table.set_group_filter(self._group_combo.currentData() or "")
+
+    def _launch_group(self):
+        group = self._group_combo.currentData() or ""
+        accounts = self._table.accounts_in_group(group)
+        if not accounts:
+            self._status_label.setText(tr("No accounts in this group"))
+            return
+        try:
+            place_id = int(self._place_id.text().strip())
+        except ValueError:
+            self._status_label.setText(tr("Enter a valid Place ID"))
+            return
+        job_id = self._job_id.text().strip()
+        delay = self._settings.get_float("General", "AccountJoinDelay", 8.0)
+
+        self._status_label.setText(f"{tr('Launching group')} ({len(accounts)})...")
+
+        async def _run():
+            from manager.batch_operations import batch_join
+            await batch_join(accounts, place_id, job_id, delay=delay)
+            self._status_label.setText(f"{tr('Group launched')}: {len(accounts)} {tr('accounts')}")
+
+        asyncio.get_event_loop().create_task(_run())
 
     def _on_double_click(self, account: Account):
         self._selected = account
@@ -522,6 +590,26 @@ class MainWindow(QMainWindow):
         ok = set_fps_cap(0 if unlocked else max_fps)
         self._status_label.setText(tr("FPS cap updated") if ok else tr("FPS update failed"))
 
+    def _toggle_anti_afk(self):
+        enabled = self._act_afk.isChecked()
+        if enabled:
+            self._anti_afk.start()
+        else:
+            self._anti_afk.stop()
+        self._settings.set("AntiAFK", "Enabled", str(enabled).lower())
+        self._status_label.setText(tr("Anti-AFK enabled") if enabled else tr("Anti-AFK disabled"))
+
+    def _open_mixer(self):
+        from gui.dialogs.mixer_dialog import MixerDialog
+        dlg = MixerDialog(lambda: self._accounts, self)
+        dlg.exec()
+
+    def _open_game_charts(self):
+        from gui.dialogs.game_charts_dialog import GameChartsDialog
+        dlg = GameChartsDialog(self)
+        dlg.place_selected.connect(lambda pid: self._place_id.setText(str(pid)))
+        dlg.exec()
+
     def _open_nexus(self):
         from gui.dialogs.nexus_dialog import NexusDialog
         dlg = NexusDialog(self._nexus_server, self)
@@ -624,6 +712,7 @@ class MainWindow(QMainWindow):
 
     def closeEvent(self, event):
         self._save_accounts()
+        self._anti_afk.stop()
         loop = asyncio.get_event_loop()
         if self._nexus_server:
             loop.create_task(self._nexus_server.stop())

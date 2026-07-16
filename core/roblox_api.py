@@ -137,3 +137,76 @@ def get_random_job_id(place_id: int) -> Optional[str]:
     import random
     server = random.choice(servers)
     return server.get("id")
+
+
+# ---------------------------------------------------------------------- #
+# 遊戲探索 / 排行榜
+# ---------------------------------------------------------------------- #
+
+def get_explore_sorts(session_id: str) -> list[dict]:
+    """
+    取得 Roblox 首頁探索頁排序清單（熱門、精選、吸金榜等）。
+    新版 API，取代已淘汰的 games.roblox.com/v1/games/sorts。
+    """
+    try:
+        r = httpx.get(
+            "https://apis.roblox.com/explore-api/v1/get-sorts",
+            params={"sessionId": session_id},
+            headers={"User-Agent": "Mozilla/5.0"},
+            timeout=10,
+        )
+        if not r.is_success:
+            return []
+        data = r.json()
+        return data.get("sorts", [])
+    except Exception:
+        return []
+
+
+def get_explore_sort_content(session_id: str, sort_id: str) -> list[dict]:
+    """取得指定排序的遊戲清單（新版 explore-api）。"""
+    try:
+        r = httpx.get(
+            "https://apis.roblox.com/explore-api/v1/get-sort-content",
+            params={"sessionId": session_id, "sortId": sort_id},
+            headers={"User-Agent": "Mozilla/5.0"},
+            timeout=10,
+        )
+        if not r.is_success:
+            return []
+        data = r.json()
+        return data.get("games", [])
+    except Exception:
+        return []
+
+
+def get_game_sorts_legacy() -> list[dict]:
+    """舊版排行榜清單 API（已淘汰，作為 fallback）。"""
+    try:
+        r = httpx.get(
+            f"{GAMES_API}/v1/games/sorts",
+            params={"gameSortsContext": "GamesDefaultSorts"},
+            headers={"User-Agent": "Mozilla/5.0"},
+            timeout=10,
+        )
+        if not r.is_success:
+            return []
+        return r.json().get("sorts", [])
+    except Exception:
+        return []
+
+
+def get_games_by_sort_token_legacy(sort_token: str, limit: int = 25) -> list[dict]:
+    """舊版依 sortToken 取得遊戲清單 API（已淘汰，作為 fallback）。"""
+    try:
+        r = httpx.get(
+            f"{GAMES_API}/v1/games/list",
+            params={"sortToken": sort_token, "limit": limit},
+            headers={"User-Agent": "Mozilla/5.0"},
+            timeout=10,
+        )
+        if not r.is_success:
+            return []
+        return r.json().get("games", [])
+    except Exception:
+        return []
