@@ -349,6 +349,7 @@ class MainWindow(QMainWindow):
         menu.addAction(tr("Custom Fields"), lambda: self._open_fields_for(account))
         menu.addAction(tr("Open Browser"), lambda: self._open_browser_for(account))
         menu.addSeparator()
+        menu.addAction(tr("Copy Username"), lambda: self._copy_username(account))
         menu.addAction(tr("Copy Cookie"), lambda: self._copy_cookie(account))
         menu.addSeparator()
         menu.addAction(tr("Remove"), lambda: self._remove_account(account))
@@ -634,6 +635,11 @@ class MainWindow(QMainWindow):
         loop = asyncio.get_event_loop()
         from manager.account_browser import open_account_browser
         loop.create_task(open_account_browser(account))
+
+    def _copy_username(self, account: Account):
+        import pyperclip
+        pyperclip.copy(account.username)
+        self._status_label.setText(f"{tr('Copied username for')} {account.username}")
 
     def _copy_cookie(self, account: Account):
         import pyperclip

@@ -66,6 +66,7 @@ TRANSLATIONS: dict[str, dict[str, str]] = {
 
         # Context menu
         "Open Browser": "開啟瀏覽器",
+        "Copy Username": "複製使用者名稱",
         "Copy Cookie": "複製 Cookie",
         "Remove": "移除",
         "Set Alias": "設定別名",
@@ -264,6 +265,7 @@ TRANSLATIONS: dict[str, dict[str, str]] = {
         "Exported to": "已匯出至",
         "Removed": "已移除",
         "Copied cookie for": "已複製 Cookie：",
+        "Copied username for": "已複製使用者名稱：",
         "Loaded": "已載入",
         "in job": "在伺服器",
         "not found in place": "不在 place 中",
