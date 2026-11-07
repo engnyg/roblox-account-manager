@@ -25,7 +25,7 @@ async def batch_join(
     from manager.game_launcher import join_server
     total = len(accounts)
     for i, acc in enumerate(accounts):
-        ok, msg = join_server(acc, place_id, job_id)
+        ok, msg = await asyncio.to_thread(join_server, acc, place_id, job_id)
         if progress_callback:
             progress_callback(i + 1, total)
         if ok:

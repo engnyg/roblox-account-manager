@@ -60,6 +60,24 @@ class RobloxProcess:
                 pass
 
 
+def parse_roblox_cmdline(cmdline: str) -> Optional[str]:
+    """
+    判斷是否為「主要」Roblox 遊戲行程，並回傳 tracker id（可為空字串）；不是則回傳 None。
+    兩種形式：
+      - 經 bootstrapper / 協定處理器：`... -t <ticket> -j <url> -b <tracker> ...`
+      - 直接以 URI 啟動：`RobloxPlayerBeta.exe roblox-player:1+...+browsertrackerid:<tracker>+...`
+    """
+    if not cmdline or cmdline.startswith("\\??\\"):
+        return None
+    if "-t " in cmdline or "-j " in cmdline:
+        m = re.search(r"-b (\d+)", cmdline)
+        return m.group(1) if m else ""
+    if "roblox-player:" in cmdline:
+        m = re.search(r"browsertrackerid:(\d+)", cmdline, re.IGNORECASE)
+        return m.group(1) if m else ""
+    return None
+
+
 def get_roblox_processes() -> list[RobloxProcess]:
     """掃描所有正在執行的 Roblox 進程。"""
     result = []
@@ -68,13 +86,9 @@ def get_roblox_processes() -> list[RobloxProcess]:
             if proc.info["name"] != "RobloxPlayerBeta.exe":
                 continue
             cmdline = " ".join(proc.info["cmdline"] or [])
-            # 過濾第二進程（沒有 -t 和 -j 的）
-            if not cmdline or cmdline.startswith("\\??\\"):
+            tracker_id = parse_roblox_cmdline(cmdline)
+            if tracker_id is None:  # 第二進程等
                 continue
-            if "-t " not in cmdline and "-j " not in cmdline:
-                continue
-            tracker_match = re.search(r"-b (\d+)", cmdline)
-            tracker_id = tracker_match.group(1) if tracker_match else ""
             rp = RobloxProcess(
                 pid=proc.info["pid"],
                 tracker_id=tracker_id,

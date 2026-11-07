@@ -23,6 +23,13 @@ _defaults = {
         "UnlockFPS": "false",
         "MaxFPSValue": "120",
         "Theme": "Dark",
+        "DirectLaunch": "true",
+        "RobloxExePath": "",
+    },
+    "Limits": {
+        "DefaultCpuPercent": "0",
+        "DefaultMemoryMB": "0",
+        "AutoApply": "true",
     },
     "AntiAFK": {
         "Enabled": "false",

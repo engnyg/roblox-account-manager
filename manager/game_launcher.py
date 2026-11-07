@@ -10,6 +10,7 @@ import re
 import subprocess
 import sys
 import time
+import uuid
 from typing import TYPE_CHECKING, Optional
 from urllib.parse import quote
 
@@ -374,16 +375,101 @@ def join_private_server(
             f"+robloxLocale:en_us+gameLocale:en_us+channel:+LaunchExp:InApp"
         )
 
-        if sys.platform == "win32":
-            import os
-            os.startfile(launcher_url)
-        else:
-            subprocess.Popen(["xdg-open", launcher_url])
+        from manager.roblox_launch import launch_roblox
+        pid, how = launch_roblox(launcher_url)
 
-        logger.info(f"[{account.username}] 已啟動私人伺服器 place={place_id}")
+        logger.info(f"[{account.username}] 已啟動私人伺服器 place={place_id} ({how}, pid={pid})")
         return True, "Success"
     except Exception as e:
         return False, str(e)
+
+
+_JOB_UUID_RE = re.compile(_UUID_RE, re.IGNORECASE)
+
+# Teleport-Controller 控制伺服器（本機）。bot 會回報自己目前所在的 placeId / jobId。
+TELEPORT_CONTROLLER_URL = "http://127.0.0.1:8765/config"
+
+
+def parse_join_input(text: str) -> tuple[Optional[int], str]:
+    """
+    解析「Job ID」欄位的輸入，回傳 (place_id_or_None, job_id)。
+
+    除了單純的 Job ID（UUID），也接受直接貼上整條加入連結，例如：
+      roblox://experiences/start?placeId=123&gameInstanceId=UUID
+      https://www.roblox.com/games/start?placeId=123&gameInstanceId=UUID
+      https://www.roblox.com/games/123/Name?gameInstanceId=UUID
+    連結裡有 placeId 時一併回傳，避免 Job ID 搭配到錯的 Place ID。
+    """
+    raw = (text or "").strip().strip("\"'`<>").strip()
+    if not raw:
+        return None, ""
+
+    place_id: Optional[int] = None
+    m = re.search(r"[?&]placeId=(\d+)", raw, re.IGNORECASE) or re.search(r"/games/(\d+)", raw)
+    if m:
+        place_id = int(m.group(1))
+
+    m = re.search(
+        rf"(?:gameInstanceId|jobId|gameId)=({_UUID_RE})", raw, re.IGNORECASE
+    )
+    if m:
+        return place_id, m.group(1).lower()
+
+    m = _JOB_UUID_RE.search(raw)
+    if m:
+        return place_id, m.group(0).lower()
+
+    # 不是 UUID 格式就原樣交給後續流程（讓 API 回報真正的錯誤）
+    return place_id, raw
+
+
+def _lookup_bot_place_for_job(job_id: str) -> Optional[int]:
+    """
+    向本機 Teleport-Controller 查詢：有沒有 bot 正在這個 Job ID 上？有的話回傳它的 placeId。
+    bot 實際就在該伺服器內，所以它回報的 placeId 一定與 Job ID 相符。
+    控制伺服器沒開或查不到就回傳 None，不影響正常流程。
+    """
+    try:
+        r = httpx.get(TELEPORT_CONTROLLER_URL, timeout=1.0)
+        if not r.is_success:
+            return None
+        for bot in r.json().get("bots", []):
+            if str(bot.get("jobId", "")).lower() == job_id.lower() and bot.get("placeId"):
+                return int(bot["placeId"])
+    except Exception:
+        pass
+    return None
+
+
+def normalize_join_target(place_id: Optional[int], job_text: str) -> tuple[Optional[int], str]:
+    """
+    整理加入目標：解析貼上的連結 → 再用 bot 回報的 placeId 校正。
+    返回 (place_id, job_id)。沒有 Job ID 時原樣返回 place_id。
+    """
+    link_place, job_id = parse_join_input(job_text)
+    if link_place is not None:
+        place_id = link_place
+    if job_id:
+        bot_place = _lookup_bot_place_for_job(job_id)
+        if bot_place is not None and bot_place != place_id:
+            logger.info(f"Job ID {job_id} 屬於 place {bot_place}（輸入的是 {place_id}），已自動校正")
+            place_id = bot_place
+    return place_id, job_id
+
+
+# gamejoin API 對「瀏覽器 UA」一律回 status=12 / "Unable to join Game 311"（連有效的公開伺服器也是），
+# 只有用 Roblox 客戶端自己的 UA 才會回真實結果。預檢必須使用這個 UA。
+_ROBLOX_CLIENT_UA = "Roblox/WinInet"
+
+# gamejoin status：0/1/3 = 準備中（重試）、2 = 可加入、4 = 遊戲已停用、5 = 找不到該伺服器
+# （已關閉，或 Job ID 與 Place ID 不匹配）、6 = 已滿。這些是「確定」的失敗，可以擋下加入。
+# 其餘（12、HTTP 錯誤…）代表 API 本身拒絕或行為改變，不足以斷定 Job ID 失效，不應擋住加入。
+_JOIN_RETRY_STATUSES = {0, 1, 3}
+_JOIN_DEFINITIVE_FAIL = {
+    4: "遊戲目前已停用",
+    5: "找不到此伺服器（已關閉，或這個 Job ID 不屬於 Place ID {place}）",
+    6: "伺服器已滿",
+}
 
 
 def _validate_job_id(
@@ -391,22 +477,24 @@ def _validate_job_id(
     place_id: int,
     job_id: str,
     tracker: str,
-) -> tuple[bool, str]:
+) -> tuple[bool, str, bool]:
     """
     透過 gamejoin API 驗證指定的 Job ID 目前是否仍可加入。
     舊版 PlaceLauncher.ashx RequestGameJob 對已失效/已滿/已關閉的 Job ID
     仍會回傳「Success」（因為它只是啟動 Roblox 客戶端，並不驗證伺服器是否存在），
-    導致使用者誤以為「Job ID 沒用」。這裡先用官方 gamejoin API 主動驗證，
-    才能回報真正的失敗原因。
-    返回 (ok, message)。
+    導致使用者誤以為「Job ID 沒用」。這裡先用官方 gamejoin API 主動驗證。
+
+    返回 (ok, message, definitive)：
+      definitive=True 表示失敗是確定的（伺服器不存在/已滿…），呼叫端應擋下加入；
+      definitive=False 表示預檢無法斷定（API 拒絕、網路錯誤…），呼叫端應照常嘗試啟動。
     """
     ok, csrf = account.get_csrf_token()
     if not ok:
-        return False, f"取得 CSRF token 失敗: {csrf}"
+        return False, f"取得 CSRF token 失敗: {csrf}", False
 
     cookies = {".ROBLOSECURITY": account.security_token}
     headers = {
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+        "User-Agent": _ROBLOX_CLIENT_UA,
         "X-CSRF-TOKEN": csrf,
         "Origin": "https://www.roblox.com",
         "Referer": f"https://www.roblox.com/games/{place_id}",
@@ -415,7 +503,6 @@ def _validate_job_id(
     body = {
         "placeId": place_id,
         "gameId": job_id,
-        "gameJoinAttemptId": job_id,
         "isPlayTogetherGame": False,
         "isTeleport": False,
         "isPartyLeader": False,
@@ -423,20 +510,52 @@ def _validate_job_id(
         "browserTrackerId": int(tracker) if tracker.isdigit() else 0,
     }
     try:
-        r = httpx.post(
-            "https://gamejoin.roblox.com/v1/join-game-instance",
-            json=body, cookies=cookies, headers=headers, timeout=15,
-        )
-        if not r.is_success:
-            return False, f"HTTP {r.status_code}: {r.text[:200]}"
-        data = r.json()
-        status = data.get("status", -1)
-        logger.debug(f"[{account.username}] join-game-instance status={status} msg={data.get('message')}")
-        if status == 2:
-            return True, "OK"
-        return False, f"Job ID 已失效或無法加入（status={status}）：{data.get('message', '')}"
+        data: dict = {}
+        status = -1
+        for attempt in range(4):
+            # 每次嘗試都要用獨立的 GUID（不可用 Job ID，否則會被當成重複請求）
+            body["gameJoinAttemptId"] = str(uuid.uuid4())
+            r = httpx.post(
+                "https://gamejoin.roblox.com/v1/join-game-instance",
+                json=body, cookies=cookies, headers=headers, timeout=15,
+            )
+            if not r.is_success:
+                logger.warning(f"[{account.username}] join-game-instance HTTP {r.status_code} place={place_id} job={job_id}")
+                return False, f"HTTP {r.status_code}: {r.text[:200]}", False
+            data = r.json()
+            status = data.get("status", -1)
+            logger.debug(f"[{account.username}] join-game-instance status={status} msg={data.get('message')} (try {attempt + 1})")
+            if status == 2:
+                return True, "OK", False
+            if status in _JOIN_RETRY_STATUSES:
+                time.sleep(1.0)
+                continue
+            break
+
+        logger.warning(f"[{account.username}] Job ID 預檢未通過 place={place_id} job={job_id} status={status} data={data}")
+        if status in _JOIN_DEFINITIVE_FAIL:
+            reason = _JOIN_DEFINITIVE_FAIL[status].format(place=place_id)
+            return False, f"無法加入此 Job ID（status={status}）：{reason}", True
+        return False, f"status={status} {data.get('message', '')}".strip(), False
     except Exception as e:
-        return False, str(e)
+        return False, str(e), False
+
+
+def _multi_roblox_warning() -> str:
+    """多開沒有真正生效時回傳警語（這次啟動會把執行中的 Roblox 關掉），生效時回傳空字串。"""
+    if sys.platform != "win32":
+        return ""
+    try:
+        from manager.multi_roblox import multi_roblox_state, STATE_ACTIVE, STATE_WAITING
+        state = multi_roblox_state()
+    except Exception:
+        return ""
+    if state == STATE_ACTIVE:
+        return ""
+    if state == STATE_WAITING:
+        logger.warning("多開未生效：mutex 被執行中的 Roblox 擁有，這次啟動可能會關閉它")
+        return "（⚠ 多開未生效：目前有 Roblox 持有 mutex，這次啟動會關閉它；請先關閉所有 Roblox 再試）"
+    return "（⚠ 多開已停用，這次啟動會關閉執行中的 Roblox）"
 
 
 def join_server(
@@ -447,9 +566,13 @@ def join_server(
     join_vip: bool = False,
 ) -> tuple[bool, str]:
     """
-    啟動 Roblox 並加入伺服器。
+    啟動 Roblox 並加入伺服器。（多開沒有真正生效時，訊息會附上警語）
+    job_id 可以是單純的 Job ID，也可以是整條加入連結；會自動解析並校正 Place ID。
     返回 (success, message)。
     """
+    if job_id and not follow_user:
+        place_id, job_id = normalize_join_target(place_id, job_id)
+
     ok, ticket = account.get_auth_ticket()
     if not ok:
         return False, f"Failed to get auth ticket: {ticket}"
@@ -460,10 +583,14 @@ def join_server(
     tracker = account.browser_tracker_id
     launch_time = int(time.time() * 1000)
 
+    precheck_note = _multi_roblox_warning()
     if job_id and not follow_user:
-        ok_valid, msg = _validate_job_id(account, place_id, job_id, tracker)
+        ok_valid, msg, definitive = _validate_job_id(account, place_id, job_id, tracker)
         if not ok_valid:
-            return False, msg
+            if definitive:
+                return False, msg
+            # 預檢無法斷定（不是確定失效）→ 仍照常啟動，只是提醒
+            precheck_note += f"（預檢無法確認：{msg}，仍已嘗試啟動）"
 
     try:
         if follow_user:
@@ -482,13 +609,10 @@ def join_server(
             f"+robloxLocale:en_us+gameLocale:en_us+channel:+LaunchExp:InApp"
         )
 
-        if sys.platform == "win32":
-            import os
-            os.startfile(launcher_url)
-        else:
-            subprocess.Popen(["xdg-open", launcher_url])
+        from manager.roblox_launch import launch_roblox
+        pid, how = launch_roblox(launcher_url)
 
-        logger.info(f"Launched Roblox for {account.username} → place {place_id}")
-        return True, "Success"
+        logger.info(f"Launched Roblox for {account.username} → place {place_id} ({how}, pid={pid})")
+        return True, "Success" + precheck_note
     except Exception as e:
         return False, str(e)

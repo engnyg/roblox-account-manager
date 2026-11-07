@@ -37,13 +37,15 @@ class _ServerFetchWorker(QObject):
 
 
 class ServerListDialog(QDialog):
-    join_requested = Signal(str)  # job_id
+    join_requested = Signal(str, str)  # job_id, place_id（此列表所屬的 place，必須一併帶回）
 
-    def __init__(self, account: "Account", parent: QWidget | None = None):
+    def __init__(self, account: "Account", parent: QWidget | None = None, place_id: str = ""):
         super().__init__(parent)
         self._account = account
         self.resize(680, 480)
         self._setup_ui()
+        if place_id:
+            self._place_id.setText(place_id)
         get_i18n().language_changed.connect(self._retranslate_ui)
         self._retranslate_ui()
 
@@ -92,6 +94,7 @@ class ServerListDialog(QDialog):
 
         self._fetch_btn.setEnabled(False)
         self._table.setRowCount(0)
+        self._fetched_place_id = place_id
 
         self._worker = _ServerFetchWorker(place_id)
         self._thread = QThread(self)
@@ -118,5 +121,7 @@ class ServerListDialog(QDialog):
         if row < 0:
             return
         job_id = self._table.item(row, 0).text()
-        self.join_requested.emit(job_id)
+        # 用的是「抓取當下」的 place，而不是輸入框現在的內容（抓完後使用者可能又改過）
+        place_id = str(getattr(self, "_fetched_place_id", "") or self._place_id.text().strip())
+        self.join_requested.emit(job_id, place_id)
         self.accept()

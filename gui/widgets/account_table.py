@@ -10,6 +10,7 @@ from typing import Any
 from PySide6.QtCore import (
     QAbstractTableModel, QModelIndex, Qt, Signal, QSortFilterProxyModel, QSize,
 )
+from core.settings import get_settings
 from PySide6.QtGui import QColor, QFont, QIcon, QPainter, QBrush
 from PySide6.QtWidgets import (
     QTableView, QAbstractItemView, QHeaderView, QMenu, QWidget,
@@ -20,6 +21,7 @@ from core.account import Account
 from core.i18n import tr
 
 COLUMN_KEYS = [
+    ("Launch", "_check"),   # 勾選要同時啟動的帳號
     ("Username", "username"),
     ("Alias", "alias"),
     ("Group", "group"),
@@ -29,6 +31,8 @@ COLUMN_KEYS = [
 ]
 
 VALID_COL = next(i for i, (_, k) in enumerate(COLUMN_KEYS) if k == "valid")
+CHECK_COL = 0
+USERNAME_COL = next(i for i, (_, k) in enumerate(COLUMN_KEYS) if k == "username")
 
 # Lazy icon cache — created after QApplication exists
 _icon_cache: dict[str, QIcon | None] = {}
@@ -88,9 +92,45 @@ class _ValidDelegate(QStyledItemDelegate):
 
 
 class AccountTableModel(QAbstractTableModel):
+    checked_changed = Signal()
+
     def __init__(self, accounts: list[Account] | None = None, parent=None):
         super().__init__(parent)
         self._accounts: list[Account] = accounts or []
+        # 勾選狀態以用戶名為鍵（重新載入帳號、重開程式後仍保留）
+        raw = get_settings().get("Launch", "Checked", "")
+        self._checked: set[str] = {n for n in raw.split(",") if n}
+
+    # -- 勾選 --
+    def is_checked(self, acc: Account) -> bool:
+        return acc.username in self._checked
+
+    def _save_checked(self):
+        try:
+            get_settings().set("Launch", "Checked", ",".join(sorted(self._checked)))
+        except Exception:
+            pass
+
+    def set_checked_many(self, accounts: list[Account], checked: bool):
+        changed = False
+        for acc in accounts:
+            if checked and acc.username not in self._checked:
+                self._checked.add(acc.username)
+                changed = True
+            elif not checked and acc.username in self._checked:
+                self._checked.discard(acc.username)
+                changed = True
+        if changed:
+            self._save_checked()
+            if self._accounts:
+                self.dataChanged.emit(
+                    self.index(0, CHECK_COL), self.index(len(self._accounts) - 1, CHECK_COL),
+                    [Qt.CheckStateRole],
+                )
+            self.checked_changed.emit()
+
+    def checked_accounts(self) -> list[Account]:
+        return [a for a in self._accounts if a.username in self._checked]
 
     def set_accounts(self, accounts: list[Account]):
         self.beginResetModel()
@@ -119,6 +159,13 @@ class AccountTableModel(QAbstractTableModel):
         acc = self._accounts[index.row()]
         col_name = COLUMN_KEYS[index.column()][1]
 
+        if col_name == "_check":
+            if role == Qt.CheckStateRole:
+                return Qt.Checked if self.is_checked(acc) else Qt.Unchecked
+            if role == Qt.UserRole:
+                return acc
+            return None
+
         if role == Qt.DisplayRole:
             val = getattr(acc, col_name, "")
             if col_name == "last_use" and val:
@@ -132,8 +179,18 @@ class AccountTableModel(QAbstractTableModel):
 
         return None
 
+    def setData(self, index: QModelIndex, value, role=Qt.EditRole) -> bool:
+        if index.isValid() and index.column() == CHECK_COL and role == Qt.CheckStateRole:
+            acc = self._accounts[index.row()]
+            self.set_checked_many([acc], Qt.CheckState(value) == Qt.Checked)
+            return True
+        return False
+
     def flags(self, index: QModelIndex) -> Qt.ItemFlags:
-        return Qt.ItemIsEnabled | Qt.ItemIsSelectable
+        f = Qt.ItemIsEnabled | Qt.ItemIsSelectable
+        if index.column() == CHECK_COL:
+            f |= Qt.ItemIsUserCheckable
+        return f
 
     def retranslate(self):
         """語言切換時重整表頭。"""
@@ -151,6 +208,13 @@ class _AccountFilterProxy(QSortFilterProxyModel):
         self._group_filter = group or ""
         self.invalidateFilter()
 
+    def lessThan(self, left: QModelIndex, right: QModelIndex) -> bool:
+        if left.column() == CHECK_COL:
+            m: AccountTableModel = self.sourceModel()
+            la, ra = m.get_account(left.row()), m.get_account(right.row())
+            return bool(la and m.is_checked(la)) < bool(ra and m.is_checked(ra))
+        return super().lessThan(left, right)
+
     def filterAcceptsRow(self, source_row: int, source_parent: QModelIndex) -> bool:
         if not super().filterAcceptsRow(source_row, source_parent):
             return False
@@ -163,6 +227,7 @@ class _AccountFilterProxy(QSortFilterProxyModel):
 
 
 class AccountTable(QTableView):
+    checked_changed = Signal()
     account_double_clicked = Signal(Account)
     context_menu_requested = Signal(Account, object)  # Account, QPoint
 
@@ -181,9 +246,11 @@ class AccountTable(QTableView):
         self.setSortingEnabled(True)
         self.setEditTriggers(QAbstractItemView.NoEditTriggers)
         self.verticalHeader().setVisible(False)
-        self.horizontalHeader().setSectionResizeMode(0, QHeaderView.Stretch)
-        for i in range(1, len(COLUMN_KEYS)):
-            self.horizontalHeader().setSectionResizeMode(i, QHeaderView.ResizeToContents)
+        for i in range(len(COLUMN_KEYS)):
+            self.horizontalHeader().setSectionResizeMode(
+                i, QHeaderView.Stretch if i == USERNAME_COL else QHeaderView.ResizeToContents
+            )
+        self._model.checked_changed.connect(self.checked_changed)
 
         # 用 delegate 直接绘制 Valid 列图标，绕开 DecorationRole
         self.setItemDelegateForColumn(VALID_COL, _ValidDelegate(self))
@@ -208,13 +275,31 @@ class AccountTable(QTableView):
 
     def selected_accounts(self) -> list[Account]:
         result = []
-        for idx in self.selectedIndexes():
-            if idx.column() == 0:
-                source_idx = self._proxy.mapToSource(idx)
-                acc = self._model.get_account(source_idx.row())
-                if acc:
-                    result.append(acc)
+        sm = self.selectionModel()
+        if sm is None:
+            return result
+        for idx in sm.selectedRows():
+            source_idx = self._proxy.mapToSource(idx)
+            acc = self._model.get_account(source_idx.row())
+            if acc:
+                result.append(acc)
         return result
+
+    # -- 勾選 --
+    def visible_accounts(self) -> list[Account]:
+        """目前（套用搜尋 / 群組篩選後）看得到的帳號。"""
+        out = []
+        for r in range(self._proxy.rowCount()):
+            acc = self._model.get_account(self._proxy.mapToSource(self._proxy.index(r, 0)).row())
+            if acc:
+                out.append(acc)
+        return out
+
+    def checked_accounts(self) -> list[Account]:
+        return self._model.checked_accounts()
+
+    def set_checked(self, accounts: list[Account], checked: bool):
+        self._model.set_checked_many(accounts, checked)
 
     def selected_account(self) -> Account | None:
         accounts = self.selected_accounts()

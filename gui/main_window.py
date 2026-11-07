@@ -82,6 +82,9 @@ class MainWindow(QMainWindow):
         self._act_fields = self._add_action(self._menu_accounts, "", self._open_fields)
         self._menu_accounts.addSeparator()
         self._act_refresh = self._add_action(self._menu_accounts, "", self._refresh_cookies)
+        self._menu_accounts.addSeparator()
+        self._act_check_all = self._add_action(self._menu_accounts, "", self._check_all_visible)
+        self._act_uncheck_all = self._add_action(self._menu_accounts, "", self._uncheck_all)
 
         self._menu_game = mb.addMenu("")
         self._act_join = self._add_action(self._menu_game, "", self._join_server)
@@ -133,6 +136,9 @@ class MainWindow(QMainWindow):
         self._launch_group_btn = QPushButton("")
         self._launch_group_btn.clicked.connect(self._launch_group)
         self._toolbar.addWidget(self._launch_group_btn)
+        self._launch_checked_btn = QPushButton("")
+        self._launch_checked_btn.clicked.connect(self._launch_checked)
+        self._toolbar.addWidget(self._launch_checked_btn)
 
         self._toolbar.addSeparator()
 
@@ -196,6 +202,7 @@ class MainWindow(QMainWindow):
         layout.setContentsMargins(4, 4, 4, 4)
 
         self._table = AccountTable()
+        self._table.checked_changed.connect(self._update_checked_label)
         self._table.account_double_clicked.connect(self._on_double_click)
         self._table.context_menu_requested.connect(self._on_context_menu)
         layout.addWidget(self._table)
@@ -251,6 +258,9 @@ class MainWindow(QMainWindow):
         self._lbl_group.setText(tr("Group: "))
         self._group_combo.setItemText(0, tr("All Groups"))
         self._launch_group_btn.setText(tr("Launch Group"))
+        self._act_check_all.setText(tr("Check All Visible"))
+        self._act_uncheck_all.setText(tr("Uncheck All"))
+        self._update_checked_label()
         self._lbl_place.setText(tr("Place ID: "))
         self._place_id.setPlaceholderText(tr("Place ID"))
         self._lbl_job.setText(tr("Job ID: "))
@@ -307,26 +317,53 @@ class MainWindow(QMainWindow):
     def _on_group_changed(self, _index: int):
         self._table.set_group_filter(self._group_combo.currentData() or "")
 
+    def _update_checked_label(self):
+        n = len(self._table.checked_accounts())
+        self._launch_checked_btn.setText(f"{tr('Launch Checked')} ({n})")
+
+    def _check_all_visible(self):
+        self._table.set_checked(self._table.visible_accounts(), True)
+
+    def _uncheck_all(self):
+        self._table.set_checked(self._table.checked_accounts(), False)
+
+    def _launch_checked(self):
+        accounts = self._table.checked_accounts()
+        if not accounts:
+            self._status_label.setText(tr("No accounts checked"))
+            return
+        self._launch_accounts(accounts)
+
     def _launch_group(self):
         group = self._group_combo.currentData() or ""
         accounts = self._table.accounts_in_group(group)
         if not accounts:
             self._status_label.setText(tr("No accounts in this group"))
             return
-        try:
-            place_id = int(self._place_id.text().strip())
-        except ValueError:
-            self._status_label.setText(tr("Enter a valid Place ID"))
+        self._launch_accounts(accounts)
+
+    def _launch_accounts(self, accounts: list[Account]):
+        if getattr(self, "_launching", False):
+            self._status_label.setText(tr("A launch is already in progress"))
             return
-        job_id = self._job_id.text().strip()
+        target = self._read_join_target()
+        if target is None:
+            return
+        place_id, job_id = target
         delay = self._settings.get_float("General", "AccountJoinDelay", 8.0)
 
         self._status_label.setText(f"{tr('Launching group')} ({len(accounts)})...")
 
         async def _run():
             from manager.batch_operations import batch_join
-            await batch_join(accounts, place_id, job_id, delay=delay)
-            self._status_label.setText(f"{tr('Group launched')}: {len(accounts)} {tr('accounts')}")
+            self._launching = True
+            try:
+                def _progress(done: int, total: int):
+                    self._status_label.setText(f"{tr('Launching group')} ({done}/{total})...")
+                await batch_join(accounts, place_id, job_id, delay=delay, progress_callback=_progress)
+                self._status_label.setText(f"{tr('Group launched')}: {len(accounts)} {tr('accounts')}")
+            finally:
+                self._launching = False
 
         asyncio.get_event_loop().create_task(_run())
 
@@ -337,6 +374,9 @@ class MainWindow(QMainWindow):
     def _on_context_menu(self, account: Account, pos):
         menu = QMenu(self)
         menu.addAction(tr("Join Server"), lambda: self._join_server_for(account))
+        sel = self._table.selected_accounts() or [account]
+        menu.addAction(tr("Check Selected"), lambda: self._table.set_checked(sel, True))
+        menu.addAction(tr("Uncheck Selected"), lambda: self._table.set_checked(sel, False))
         menu.addAction(tr("Server List"), lambda: self._open_server_list_for(account))
         if self._vip_link.text().strip():
             menu.addAction(tr("Join Private Server"), lambda: self._join_private_server_for(account))
@@ -366,13 +406,31 @@ class MainWindow(QMainWindow):
             return
         self._join_server_for(account)
 
-    def _join_server_for(self, account: Account):
+    def _read_join_target(self) -> tuple[int, str] | None:
+        """
+        讀取 Place ID / Job ID 欄位。Job ID 欄可直接貼整條加入連結，
+        連結內的 placeId 或 bot 回報的 placeId 會自動寫回 Place ID 欄，避免兩者不匹配。
+        """
+        from manager.game_launcher import normalize_join_target
         try:
-            place_id = int(self._place_id.text().strip())
+            typed_place = int(self._place_id.text().strip())
         except ValueError:
+            typed_place = None
+        place_id, job_id = normalize_join_target(typed_place, self._job_id.text())
+        if place_id is None:
             self._status_label.setText(tr("Enter a valid Place ID"))
+            return None
+        if place_id != typed_place:
+            self._place_id.setText(str(place_id))
+        if job_id != self._job_id.text().strip():
+            self._job_id.setText(job_id)
+        return place_id, job_id
+
+    def _join_server_for(self, account: Account):
+        target = self._read_join_target()
+        if target is None:
             return
-        job_id = self._job_id.text().strip()
+        place_id, job_id = target
         from manager.game_launcher import join_server
         ok, msg = join_server(account, place_id, job_id)
         self._status_label.setText(f"{account.username}: {msg}")
@@ -549,8 +607,15 @@ class MainWindow(QMainWindow):
 
     def _open_server_list_for(self, account: Account):
         from gui.dialogs.server_list_dialog import ServerListDialog
-        dlg = ServerListDialog(account, self)
-        dlg.join_requested.connect(lambda jid: (self._job_id.setText(jid), self._join_server_for(account)))
+        dlg = ServerListDialog(account, self, place_id=self._place_id.text().strip())
+
+        def _on_join_requested(jid: str, pid: str):
+            if pid:
+                self._place_id.setText(pid)  # 列表所屬的 place，避免與主視窗 Place ID 不匹配
+            self._job_id.setText(jid)
+            self._join_server_for(account)
+
+        dlg.join_requested.connect(_on_join_requested)
         dlg.exec()
 
     def _find_player(self):
@@ -578,9 +643,14 @@ class MainWindow(QMainWindow):
         self._status_label.setText(tr("Cookies refreshed"))
 
     def _toggle_multi_roblox(self):
-        from manager.multi_roblox import enable_multi_roblox
+        from manager.multi_roblox import enable_multi_roblox, multi_roblox_state, STATE_WAITING
         if enable_multi_roblox():
             self._status_label.setText(tr("Multi-Roblox enabled"))
+        elif multi_roblox_state() == STATE_WAITING:
+            # mutex 目前被執行中的 Roblox 擁有：背景會持續嘗試，那個 Roblox 關閉後自動生效
+            self._status_label.setText(
+                f"{tr('Multi-Roblox')}: 尚未生效（已有 Roblox 持有 mutex，關閉所有 Roblox 後自動接手）"
+            )
         else:
             self._status_label.setText(tr("Multi-Roblox failed"))
 
