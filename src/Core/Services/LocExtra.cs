@@ -167,6 +167,20 @@ public static partial class Loc
         ["The first time you allow other devices, Windows Firewall may ask — choose Private networks."] = "第一次允許其他裝置時，Windows 防火牆可能會詢問，請選「私人網路」。",
         ["Nexus only listens on this computer. Passwords are checked in the 'password' header or query string."] = "Nexus 只開放給這台電腦。密碼會從 'password' 標頭或查詢字串檢查。",
 
+        // 產生帳號（BloxGen / Altgen）
+        ["Generate Accounts..."] = "產生帳號...", ["Generate Accounts"] = "產生帳號", ["Generate"] = "產生", ["Generated"] = "已產生",
+        ["Buy and import accounts from BloxGen or Altgen. Each account is saved as soon as it is received."] =
+            "向 BloxGen 或 Altgen 購買並匯入帳號。每取得一個帳號就會立刻存檔。",
+        ["API key (BloxGen: BLOX-… / Altgen: MG_…):"] = "API key（BloxGen：BLOX-… / Altgen：MG_…）：",
+        ["Account type:"] = "帳號種類：", ["Quantity (1-100):"] = "數量（1-100）：",
+        ["BloxGen is bought one account at a time; Altgen buys the whole quantity in one request."] =
+            "BloxGen 一次買一個帳號；Altgen 會一次買完整個數量。",
+        ["Key not recognised"] = "無法辨識的 key",
+        ["Enter a valid API key (BloxGen: BLOX-... or Altgen: MG_...)"] = "請輸入有效的 API key（BloxGen：BLOX-... 或 Altgen：MG_...）",
+        ["Quantity must be between 1 and 100."] = "數量必須介於 1 到 100。",
+        ["Generating…"] = "產生中…", ["Done:"] = "完成：", ["Stopped:"] = "已停止：", ["Cancelled."] = "已取消。",
+        ["Generation is still running. Stop it and close?"] = "仍在產生帳號。要停止並關閉嗎？",
+
         // WebView2
         ["Log in to Roblox"] = "登入 Roblox", ["WebView2 is not available"] = "找不到 WebView2 執行環境",
         ["Reload page"] = "重新整理頁面",

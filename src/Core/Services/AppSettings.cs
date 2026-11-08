@@ -67,6 +67,11 @@ public sealed class AppSettings
     /// <summary>每個用戶名的擷取區域，格式 "x,y,w,h"（相對視窗左上角的像素）；沒有設定 = 整個視窗。</summary>
     public Dictionary<string, List<string>> TrackingRegions { get; set; } = new();
 
+    // ---- 帳號生成（BloxGen / Altgen）----
+    public string GeneratorApiKey { get; set; } = "";
+    public string GeneratorBloxGenType { get; set; } = "alt";
+    public int GeneratorCount { get; set; } = 1;
+
     // ---- 外觀 / 介面 ----
     public string Theme { get; set; } = "System";
     public bool ClickSounds { get; set; }

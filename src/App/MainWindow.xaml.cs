@@ -140,7 +140,7 @@ public partial class MainWindow : Window
         Title = T("Roblox Account Manager V3");
         MenuFile.Header = T("File"); MenuAccounts.Header = T("Accounts"); MenuGame.Header = T("Game"); MenuTools.Header = T("Tools"); MenuView.Header = T("View");
         MiAddLogin.Header = T("Add Account by Logging In..."); MiImportFile.Header = T("Import V2 Accounts..."); MiImportDat.Header = T("Import Encrypted accounts.dat (V2 / RAM)...");
-        MiImportCookies.Header = T("Import Cookies..."); MiExportCookies.Header = T("Export Cookies"); MiExit.Header = T("Exit");
+        MiImportCookies.Header = T("Import Cookies..."); MiGenerate.Header = T("Generate Accounts..."); MiExportCookies.Header = T("Export Cookies"); MiExit.Header = T("Exit");
         MiEdit.Header = T("Edit Account..."); MiTools.Header = T("Account Tools..."); MiBrowser.Header = T("Open in Browser");
         MiCheckAll.Header = T("Check All Visible"); MiUncheckAll.Header = T("Uncheck All");
         MiKillSel.Header = T("Kill Selected Instances"); MiKillChecked.Header = T("Kill Checked Instances"); MiTrimSel.Header = T("Trim Memory (Selected)");
@@ -814,6 +814,17 @@ public partial class MainWindow : Window
         var (accs, failed) = await AccountStore.ImportCookieLinesAsync(text.Split('\n'));
         MergeIn(accs);
         if (failed > 0) Status($"{StatusText.Text}  (失敗 {failed})");
+    }
+
+    private void Generate_Click(object s, RoutedEventArgs e)
+    {
+        // 每取得一個帳號就補齊 UserId 並立刻存檔；就算 Roblox 查詢失敗，買到的帳號也會保留（顯示 ✘）。
+        var w = new GeneratorWindow(async acc =>
+        {
+            await RobloxApi.FetchInfoAsync(acc);
+            MergeIn([acc]);
+        }) { Owner = this };
+        w.ShowDialog();
     }
 
     private void ExportCookies_Click(object s, RoutedEventArgs e)

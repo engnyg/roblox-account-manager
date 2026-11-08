@@ -66,6 +66,7 @@
                 <MenuItem x:Name="MiImportFile" Click="ImportFile_Click"/>
                 <MenuItem x:Name="MiImportDat" Click="ImportDat_Click"/>
                 <MenuItem x:Name="MiImportCookies" Click="ImportCookies_Click"/>
+                <MenuItem x:Name="MiGenerate" Click="Generate_Click"/>
                 <MenuItem x:Name="MiExportCookies" Click="ExportCookies_Click"/>
                 <Separator/>
                 <MenuItem x:Name="MiExit" Click="Exit_Click"/>
