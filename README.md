@@ -69,6 +69,13 @@ PIN 解鎖、追蹤隱私、變更密碼 / 信箱 / 顯示名稱、登出其他�
 - 密碼放在 `password` 標頭或查詢字串；Nexus 只監聽本機。網頁面板不會送出任何 cookie
 - **追蹤**：定時對 Roblox 視窗截圖（可指定每個帳號的擷取區域）並傳到 Discord webhook
 
+### 自動更新
+- 啟動時（設定 → 一般 可關閉）與「工具 → 檢查更新」會查 [GitHub Releases](https://github.com/engnyg/roblox-account-manager/releases) 的最新正式版；
+  有新版就顯示更新說明，按「是」後下載、驗證、關閉程式，由獨立腳本覆蓋檔案並自動重開。帳號與設定存在 `%LOCALAPPDATA%`，不受影響
+- 安全：只接受 `github.com/engnyg/roblox-account-manager/releases/download/` 底下、檔名 `RobloxAccountManagerV3*.zip` 的檔案；
+  Release 附有 SHA-256 時一定驗證；zip 內必須有 `RobloxAccountManagerV3.exe`；開發版（`bin\Debug`）不會自我更新
+- 發行新版：把 `src/App/RobloxAccountManager.App.csproj` 的 `<Version>` 加大，執行 `pwsh tools/release.ps1`（只打包）或 `pwsh tools/release.ps1 -Publish`（打包並建立 Release）
+
 ### 介面與資料
 - 主視窗是「發射台」版面：左側群組清單（顯示帳號數與執行中數量）、上方**目的地卡片**（輸入 Place ID 後即時顯示遊戲圖示、名稱與目前人數，
   避免把一整批帳號送進錯的遊戲）、大頭貼外圈在帳號執行中時亮起；識別碼（Place ID / Job ID / PID）用等寬字
@@ -102,7 +109,6 @@ dotnet publish src/App -c Release -r win-x64 --self-contained false -o publish
 ## 刻意沒有移植的部分
 
 - **帳號產生器**（大量建立帳號、繞過 captcha、BloxGen / Altgen API）：涉及自動大量註冊與繞過驗證，不做。
-- **V2 的自動更新器**：V3 以手動發行為準。
 
 ## 尚未在真實環境驗證
 

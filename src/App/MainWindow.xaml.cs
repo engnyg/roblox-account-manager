@@ -90,6 +90,7 @@ public partial class MainWindow : Window
             await RefreshRunningAsync();
             var v = await RobloxVersion.GetLatestAsync(_settings.Channel);
             if (v is not null) VersionText.Text = "Roblox " + v.Replace("version-", "");
+            if (_settings.AutoCheckUpdates) await CheckForUpdateAsync(manual: false);
         };
 
         AppLog.Info("Roblox Account Manager V3 已啟動");
@@ -148,7 +149,7 @@ public partial class MainWindow : Window
         MiCharts.Header = T("Game Charts..."); MiMulti.Header = T("Multi-Roblox"); MiAfk.Header = T("Anti-AFK"); MiFps.Header = T("FPS Cap...");
         MiLayoutList.Header = T("List"); MiLayoutTiles.Header = T("Tiles");
         MiMixer.Header = T("Mixer"); MiLogs.Header = T("Logs"); MiTracking.Header = T("Tracking..."); MiNexus.Header = "Nexus..."; MiWebPanel.Header = T("Open Web Control Panel");
-        MiSettings.Header = T("Settings"); MiHelp.Header = T("Help");
+        MiSettings.Header = T("Settings"); MiHelp.Header = T("Help"); MiUpdate.Header = T("Check for Updates...");
         LblSearch.Text = T("Search accounts, aliases, groups…"); LblGroup.Text = T("Groups");
         LblDest.Text = T("Destination"); LblPlace.Text = "Place ID"; LblJob.Text = T("Job ID or join link (optional)");
         LblRunning.Text = T("Running"); RunningOf.Text = T("Roblox instances");

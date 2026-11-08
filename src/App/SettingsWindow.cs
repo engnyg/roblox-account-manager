@@ -18,7 +18,7 @@ public sealed class SettingsWindow : Window
     // General
     private readonly ComboBox _lang = new() { ItemsSource = new[] { "zh", "en" }, Width = 120, HorizontalAlignment = HorizontalAlignment.Left };
     private readonly TextBox _delay = Box(width: 90), _exe = Box(), _channel = Box(width: 160), _tp = Box();
-    private readonly CheckBox _multi, _direct, _relaunch, _watcher, _watcherMem, _tray;
+    private readonly CheckBox _multi, _direct, _relaunch, _watcher, _watcherMem, _tray, _autoUpdate;
     private readonly TextBox _watcherMb = Box(width: 70);
     // Performance
     private readonly CheckBox _lowerPrio, _autoTrim, _blockCrash;
@@ -64,6 +64,7 @@ public sealed class SettingsWindow : Window
         _watcherMb.Text = _s.WatcherMemoryLowMb.ToString(); _watcherMb.HorizontalAlignment = HorizontalAlignment.Left; _watcherMb.Margin = Gap(24, 0, 0, 10);
         g.Children.Add(_watcherMem); g.Children.Add(_watcherMb);
         _tray = Check(T("Hide to the system tray when the window is closed"), _s.HideToTray); g.Children.Add(_tray);
+        _autoUpdate = Check(T("Check for updates on startup"), _s.AutoCheckUpdates); g.Children.Add(_autoUpdate);
         g.Children.Add(Label(T("Roblox channel (blank = default):"))); _channel.Text = _s.Channel; _channel.HorizontalAlignment = HorizontalAlignment.Left; _channel.Margin = Gap(0, 0, 0, 10); g.Children.Add(_channel);
         g.Children.Add(Label(T("RobloxPlayerBeta.exe path (blank = auto):")));
         _exe.Text = _s.RobloxExePath;
@@ -239,6 +240,7 @@ public sealed class SettingsWindow : Window
 
         _s.LowerPriority = _lowerPrio.IsChecked == true;
         _s.BlockCrashHandler = _blockCrash.IsChecked == true;
+        _s.AutoCheckUpdates = _autoUpdate.IsChecked == true;
         _s.AutoTrimEnabled = _autoTrim.IsChecked == true;
         if (int.TryParse(_trimMin.Text, out var tm)) _s.AutoTrimMinutes = Math.Clamp(tm, 1, 1440);
         _s.Renderer = _renderer.SelectedItem as string ?? "Default";

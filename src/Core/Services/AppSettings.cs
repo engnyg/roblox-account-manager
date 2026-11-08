@@ -51,6 +51,7 @@ public sealed class AppSettings
 
     // ---- 效能（MultiRoblox-RAM 的 Performance 設定）----
     public bool LowerPriority { get; set; } = true;          // 2 個以上實例時自動降為 Below Normal
+    public bool AutoCheckUpdates { get; set; } = true;       // 啟動時檢查 GitHub Releases
     public bool BlockCrashHandler { get; set; }              // 結束 RobloxCrashHandler.exe（多開省資源）
     public bool AutoTrimEnabled { get; set; }                // 定時釋放記憶體
     public int AutoTrimMinutes { get; set; } = 10;

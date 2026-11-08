@@ -106,6 +106,7 @@
                 <MenuItem x:Name="MiWebPanel" Click="WebPanel_Click"/>
                 <Separator/>
                 <MenuItem x:Name="MiSettings" Click="Settings_Click"/>
+                <MenuItem x:Name="MiUpdate" Click="CheckUpdate_Click"/>
                 <MenuItem x:Name="MiHelp" Click="Help_Click"/>
             </MenuItem>
         </Menu>
