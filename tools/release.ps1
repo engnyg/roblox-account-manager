@@ -1,4 +1,4 @@
-<#
+﻿<#
   打包並發佈新版到 GitHub Releases（自動更新會讀這個 Release）。
 
   用法：
