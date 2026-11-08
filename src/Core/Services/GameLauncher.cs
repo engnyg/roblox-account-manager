@@ -81,6 +81,14 @@ public static class GameLauncher
             jobId = j;
         }
 
+        // 沒有指定 Job ID：Roblox 自己挑會常把同一個帳號放回同一台，改由我們挑一台和上次不同的；挑不到就照舊
+        bool picked = false;
+        if (jobId.Length == 0 && !followUser)
+        {
+            var job = await ServerPicker.PickAsync(account.Username, placeId, ct);
+            if (job is not null) { jobId = job; picked = true; }
+        }
+
         var (ok, ticket) = await RobloxApi.GetAuthTicketAsync(account, ct);
         if (!ok) return new JoinResult(false, $"取得 auth ticket 失敗: {ticket}");
 
@@ -92,12 +100,19 @@ public static class GameLauncher
         if (jobId.Length > 0 && !followUser)
         {
             var (valid, msg, definitive) = await RobloxApi.ValidateJobIdAsync(account, placeId, jobId, tracker, ct);
-            if (!valid)
+            if (!valid && picked && definitive)
+            {
+                // 我們挑的那台剛好滿了 / 關了：不要因此失敗，退回一般加入
+                jobId = "";
+                note += "（挑選的伺服器不可用，改用一般加入）";
+            }
+            else if (!valid)
             {
                 if (definitive) return new JoinResult(false, msg);
                 note += $"（預檢無法確認：{msg}，仍已嘗試啟動）"; // 預檢無法斷定 → 照常啟動，只是提醒
             }
         }
+        if (picked && jobId.Length > 0) note += $"（已挑選不同的伺服器 {jobId[..Math.Min(8, jobId.Length)]}…）";
 
         try
         {
@@ -153,6 +168,7 @@ public static class GameLauncher
         IReadOnlyList<Account> accounts, long placeId, string jobId, TimeSpan delay,
         Action<int, int, Account, JoinResult>? progress = null, CancellationToken ct = default)
     {
+        using var batch = ServerPicker.BeginBatch(accounts.Count);   // 同一批的帳號共用同一台（沒指定 Job ID 時）
         for (int i = 0; i < accounts.Count; i++)
         {
             ct.ThrowIfCancellationRequested();

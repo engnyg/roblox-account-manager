@@ -34,7 +34,19 @@ public partial class MainWindow
         }
 
         var notes = info.Notes.Length > 600 ? info.Notes[..600] + "…" : info.Notes;
-        var text = $"{T("A new version is available:")} v{info.Version.ToString(3)}  ({T("current")} v{Updater.CurrentVersion.ToString(3)})\n\n"
+
+        // 單檔版（含運行庫）旁邊沒有 RobloxAccountManagerV3.dll；更新用的 zip 是「依賴運行庫」版，覆蓋上去會把單檔版弄壞，所以改成請使用者下載新的單檔 exe
+        if (!File.Exists(Path.Combine(baseDir, "RobloxAccountManagerV3.dll")))
+        {
+            var msg = $"{T("A new version is available:")} v{info.Version.ToString(3)}  ({T("current")} v{Updater.CurrentVersion.ToString(3)})\n\n"
+                      + (notes.Length > 0 ? notes + "\n\n" : "")
+                      + T("This is the single-file build and cannot replace itself. Open the download page to get the new -standalone.exe?");
+            if (MessageBox.Show(this, msg, T("Check for Updates..."), MessageBoxButton.YesNo, MessageBoxImage.Question) == MessageBoxResult.Yes)
+                try { System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo($"https://github.com/{Updater.Repo}/releases/tag/{info.Tag}") { UseShellExecute = true }); } catch { }
+            return;
+        }
+
+        var text =$"{T("A new version is available:")} v{info.Version.ToString(3)}  ({T("current")} v{Updater.CurrentVersion.ToString(3)})\n\n"
                    + (notes.Length > 0 ? notes + "\n\n" : "")
                    + T("Update now? The app will restart; your accounts and settings are kept.");
         if (MessageBox.Show(this, text, T("Check for Updates..."), MessageBoxButton.YesNo, MessageBoxImage.Question) != MessageBoxResult.Yes) return;

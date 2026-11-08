@@ -248,7 +248,7 @@ public partial class MixerWindow : Window
         int.TryParse(FpsBox.Text.Trim(), out var fps);
         _settings.FpsCap = Math.Max(0, fps);
         _settings.Save();
-        Status(FpsUnlocker.SetFpsCap(_settings.FpsCap) ? $"FPS: {_settings.FpsCap}{MainWindow.RestartHint()}" : "FPS: failed");
+        Status(FpsUnlocker.SetFpsCap(_settings.FpsCap) ? $"FPS: {_settings.FpsCap}{MainWindow.FpsWarning(_settings.FpsCap)}{MainWindow.RestartHint()}" : "FPS: failed");
     }
 
     // ------------------------------------------------------------------ //

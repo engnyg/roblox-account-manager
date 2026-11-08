@@ -72,6 +72,8 @@ public static class FastFlags
         var hasQuality = s.QualityLevel > 0;
         if (!hasFps && !hasRenderer && !hasQuality) return true;   // 沒有要寫的，不建檔
 
+        if (hasFps) SetFramerateCap(fps);   // 真正會生效的官方設定（DFIntTaskSchedulerTargetFps 新版 Roblox 會拒絕）
+
         var path = PathOverride ?? (exe is null ? SettingsPath() : Path.Combine(Path.GetDirectoryName(exe)!, "ClientSettings", "ClientAppSettings.json"));
         return UpdateAt(path, o =>
         {
@@ -86,12 +88,88 @@ public static class FastFlags
         });
     }
 
-    /// <summary>FPS 上限：≤0 或 ≥10000 代表不限制（移除旗標）。</summary>
-    public static bool SetFpsCap(int fps) => Update(o =>
+    /// <summary>
+    /// FPS 上限：≤0 或 ≥10000 代表不限制（移除旗標）。
+    /// 同時寫入 Roblox 官方的 FramerateCap（見 <see cref="SetFramerateCap"/>）——新版 Roblox 會拒絕 DFIntTaskSchedulerTargetFps，
+    /// 真正生效的是 FramerateCap。回傳值只代表旗標檔（ClientAppSettings.json）是否寫成功。
+    /// </summary>
+    public static bool SetFpsCap(int fps)
     {
-        if (fps <= 0 || fps >= 10000) o.Remove(FpsFlag);
-        else o[FpsFlag] = fps;
-    });
+        var ok = Update(o =>
+        {
+            if (fps <= 0 || fps >= 10000) o.Remove(FpsFlag);
+            else o[FpsFlag] = fps;
+        });
+        SetFramerateCap(fps);
+        return ok;
+    }
+
+    /// <summary>Roblox 官方「幀率上限」設定所在的檔案。測試可用 <see cref="GlobalSettingsOverride"/> 覆寫。</summary>
+    public static string? GlobalSettingsOverride { get; set; }
+
+    internal static string? GlobalSettingsPath()
+    {
+        if (GlobalSettingsOverride is not null) return GlobalSettingsOverride;
+        if (PathOverride is not null) return Path.Combine(Path.GetDirectoryName(PathOverride)!, "GlobalBasicSettings_13.xml");
+        var local = Environment.GetEnvironmentVariable("LOCALAPPDATA");
+        return string.IsNullOrEmpty(local) ? null : Path.Combine(local, "Roblox", "GlobalBasicSettings_13.xml");
+    }
+
+    private static readonly System.Text.RegularExpressions.Regex FramerateCapRx =
+        new("""(<int name="FramerateCap">)-?\d+(</int>)""", System.Text.RegularExpressions.RegexOptions.Compiled);
+
+    /// <summary>
+    /// 設定 GlobalBasicSettings_13.xml 的 FramerateCap（Roblox 遊戲內「幀率上限」的同一個設定，啟動時讀取）。
+    /// ≤0 或 ≥999 代表不限制（Roblox 用 999）。檔案不存在（Roblox 還沒跑過）就不建立；只改這一個欄位，其餘原樣保留。
+    /// </summary>
+    public static bool SetFramerateCap(int fps)
+    {
+        var path = GlobalSettingsPath();
+        if (path is null || !File.Exists(path)) return false;
+        try
+        {
+            var cap = fps <= 0 || fps >= 999 ? 999 : fps;
+            var text = File.ReadAllText(path);
+            string updated;
+            if (FramerateCapRx.IsMatch(text)) updated = FramerateCapRx.Replace(text, $"${{1}}{cap}${{2}}", 1);
+            else
+            {
+                var i = text.IndexOf("<Properties>", StringComparison.Ordinal);
+                if (i < 0) return false;
+                i += "<Properties>".Length;
+                updated = text.Insert(i, $"\r\n<int name=\"FramerateCap\">{cap}</int>");
+            }
+            if (updated != text) WriteKeepingReadOnly(path, updated);
+            return true;
+        }
+        catch { return false; }
+    }
+
+    /// <summary>
+    /// 有些人（或工具）會把設定檔設成唯讀來鎖住幀率，一般寫入會被拒絕。這裡先暫時解除唯讀、寫完再恢復，
+    /// 這樣「鎖」還在（Roblox 結束時一樣改不掉它），但我們設定的值也寫得進去。
+    /// </summary>
+    private static void WriteKeepingReadOnly(string path, string text)
+    {
+        var attrs = File.GetAttributes(path);
+        var readOnly = (attrs & FileAttributes.ReadOnly) != 0;
+        if (readOnly) File.SetAttributes(path, attrs & ~FileAttributes.ReadOnly);
+        try { File.WriteAllText(path, text); }
+        finally { if (readOnly) File.SetAttributes(path, attrs); }
+    }
+
+    /// <summary>目前 GlobalBasicSettings_13.xml 裡的 FramerateCap；沒有檔案或沒有這個欄位回傳 null（介面用來確認有沒有寫成功）。</summary>
+    public static int? ReadFramerateCap()
+    {
+        try
+        {
+            var path = GlobalSettingsPath();
+            if (path is null || !File.Exists(path)) return null;
+            var m = System.Text.RegularExpressions.Regex.Match(File.ReadAllText(path), """<int name="FramerateCap">(-?\d+)</int>""");
+            return m.Success ? int.Parse(m.Groups[1].Value) : null;
+        }
+        catch { return null; }
+    }
 
     /// <summary>強制使用指定的渲染引擎；Default 則移除所有相關旗標。</summary>
     public static bool SetRenderer(Renderer r) => Update(o =>

@@ -534,6 +534,7 @@ public partial class MainWindow : Window
         _launching = true;
         _launchCts = new CancellationTokenSource();
         var delay = TimeSpan.FromSeconds(Math.Max(0, _settings.AccountJoinDelay));
+        using var batch = ServerPicker.BeginBatch(list.Count);   // 沒填 Job ID 時，這一批的帳號一起進同一台伺服器
         try
         {
             for (int i = 0; i < list.Count; i++)
@@ -894,7 +895,15 @@ public partial class MainWindow : Window
         if (text is null || !int.TryParse(text.Trim(), out var fps)) return;
         _settings.FpsCap = Math.Max(0, fps);
         _settings.Save();
-        Status(FpsUnlocker.SetFpsCap(_settings.FpsCap) ? $"FPS: {_settings.FpsCap}{RestartHint()}" : "FPS: failed");
+        Status(FpsUnlocker.SetFpsCap(_settings.FpsCap) ? $"FPS: {_settings.FpsCap}{FpsWarning(_settings.FpsCap)}{RestartHint()}" : "FPS: failed");
+    }
+
+    /// <summary>真正生效的是 GlobalBasicSettings_13.xml 的 FramerateCap；寫完讀回來，對不上就明講，不要默默失敗。</summary>
+    internal static string FpsWarning(int fps)
+    {
+        if (fps <= 0) return "";
+        var cur = FastFlags.ReadFramerateCap();
+        return cur is null || cur == Math.Min(fps, 999) ? "" : $"  —  ⚠ {T("Could not set FramerateCap in GlobalBasicSettings_13.xml (now")} {cur})";
     }
 
     /// <summary>FPS 等旗標只在 Roblox 啟動時讀取；已有實例在跑時提醒使用者要重開。</summary>

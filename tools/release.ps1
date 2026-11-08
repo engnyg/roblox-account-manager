@@ -33,9 +33,20 @@ $hash = (Get-FileHash $zip -Algorithm SHA256).Hash.ToLower()
 "打包完成：$zip"
 "SHA-256：$hash"
 
+# 單檔版（含 .NET 運行庫，不必另外安裝）：給手動下載用，自動更新只認上面的 zip
+$single = Join-Path $out "single"
+dotnet publish src/App -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true `
+    -p:IncludeNativeLibrariesForSelfExtract=true -p:EnableCompressionInSingleFile=true -p:DebugType=none -o $single --nologo
+if ($LASTEXITCODE -ne 0) { throw "單檔版 publish 失敗" }
+$exe = Join-Path $out "RobloxAccountManagerV3-$tag-standalone.exe"
+Copy-Item (Join-Path $single "RobloxAccountManagerV3.exe") $exe
+$exeHash = (Get-FileHash $exe -Algorithm SHA256).Hash.ToLower()
+"單檔版：$exe"
+"SHA-256：$exeHash"
+
 if (-not $Publish) { "（沒有加 -Publish，不會建立 GitHub Release）"; return }
 
 $repo = "engnyg/roblox-account-manager"
 if (-not $Notes) { $Notes = "Roblox Account Manager V3 $tag" }
-gh release create $tag $zip --repo $repo --title $tag --notes $Notes
+gh release create $tag $zip $exe --repo $repo --title $tag --notes $Notes
 "已發佈：https://github.com/$repo/releases/tag/$tag"

@@ -104,6 +104,7 @@ public static partial class Loc
         ["A new version is available:"] = "有新版本：", ["current"] = "目前",
         ["Update now? The app will restart; your accounts and settings are kept."] = "要現在更新嗎？程式會重新啟動，帳號與設定都會保留。",
         ["Downloading update…"] = "正在下載更新…", ["Update failed:"] = "更新失敗：",
+        ["This is the single-file build and cannot replace itself. Open the download page to get the new -standalone.exe?"] = "這是單檔版，無法自己更新自己。要開啟下載頁取得新的 -standalone.exe 嗎？",
         ["Automatically trim memory every (minutes):"] = "每隔幾分鐘自動釋放記憶體：", ["Trim memory now"] = "立即釋放記憶體",
         ["Force a rendering engine (applies to newly started instances):"] = "強制指定渲染引擎（只影響新啟動的實例）：",
         ["Graphics quality override 1-21 (0 = don't override):"] = "覆寫圖形品質 1-21（0 = 不覆寫）：",
@@ -170,6 +171,7 @@ public static partial class Loc
         // FPS 上限
         ["Applies to newly started instances; restart the"] = "只對之後才啟動的實例生效；請重開",
         ["running instance(s) to apply it."] = "個執行中的實例才會套用。",
+        ["Could not set FramerateCap in GlobalBasicSettings_13.xml (now"] = "無法寫入 GlobalBasicSettings_13.xml 的 FramerateCap（目前",
 
         // 產生帳號（BloxGen / Altgen）
         ["Generate Accounts..."] = "產生帳號...", ["Generate Accounts"] = "產生帳號", ["Generate"] = "產生", ["Generated"] = "已產生",
