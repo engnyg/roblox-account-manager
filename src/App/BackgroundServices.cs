@@ -17,6 +17,7 @@ public sealed class BackgroundServices : IDisposable
     private readonly Func<Account?> _selected;
     private readonly DispatcherTimer _trimTimer = new();
     private readonly DispatcherTimer _priorityTimer = new() { Interval = TimeSpan.FromSeconds(5) };
+    private readonly DispatcherTimer _crashTimer = new() { Interval = TimeSpan.FromSeconds(2) };
 
     public RelaunchSupervisor Relaunch { get; } = new();
     public RobloxWatcher Watcher { get; } = new();
@@ -44,6 +45,15 @@ public sealed class BackgroundServices : IDisposable
             var pids = RobloxProcesses.List().Select(i => i.Pid).ToList();
             int n = ProcessTuning.TrimMemory(pids);
             AppLog.Info($"[記憶體] 定時釋放：{n}/{pids.Count} 個實例");
+        };
+        _crashTimer.Tick += (_, _) =>
+        {
+            if (!AppSettings.Current.BlockCrashHandler) return;
+            _ = Task.Run(() =>
+            {
+                int n = CrashHandler.Kill();
+                if (n > 0) AppLog.Info($"[當機處理程式] 已結束 {n} 個 RobloxCrashHandler");
+            });
         };
         _priorityTimer.Tick += (_, _) =>
         {
@@ -77,6 +87,7 @@ public sealed class BackgroundServices : IDisposable
 
         // 多開降優先權
         if (s.LowerPriority) _priorityTimer.Start(); else _priorityTimer.Stop();
+        if (s.BlockCrashHandler) _crashTimer.Start(); else _crashTimer.Stop();
 
         // 追蹤
         if (s.TrackingEnabled && ScreenshotTracker.IsValidWebhook(s.TrackingWebhookUrl)) Tracker.Start(s); else Tracker.Stop();
@@ -183,6 +194,7 @@ public sealed class BackgroundServices : IDisposable
     {
         _trimTimer.Stop();
         _priorityTimer.Stop();
+        _crashTimer.Stop();
         Relaunch.Dispose();
         Watcher.Dispose();
         Tracker.Dispose();

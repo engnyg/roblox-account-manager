@@ -50,6 +50,8 @@ V2（Python）的 C# 重寫版，並把 MultiRoblox-RAM 的功能一併移植進
 - **混音台**：記憶體 / CPU / 音量 / 優先權顯示；每個實例的 CPU・RAM 上限、**音量與靜音（Windows Core Audio）**、
   **釋放記憶體**、**處理程序優先權**、視窗大小與格狀排列、FPS 上限、**渲染器（D3D11 / OpenGL / Vulkan）與畫質覆寫**、結束選取 / 全部
 - 實例監看：記憶體持續過低的實例自動關閉、同時 2 個以上實例時自動降低 CPU 優先權、定時釋放記憶體
+- **封鎖當機處理程式**（設定 → 效能，預設關閉）：每 2 秒結束名稱完全是 `RobloxCrashHandler` 的行程，省下多開時的記憶體與 CPU；
+  只結束行程，不改系統設定或登錄檔，關掉後立即恢復
 - Roblox 頻道（channel）設定、防掛機
 
 ### 帳號工具
@@ -101,7 +103,6 @@ dotnet publish src/App -c Release -r win-x64 --self-contained false -o publish
 
 - **帳號產生器**（大量建立帳號、繞過 captcha、BloxGen / Altgen API）：涉及自動大量註冊與繞過驗證，不做。
 - **V2 的自動更新器**：V3 以手動發行為準。
-- **「封鎖當機處理程式」**：上游已移除該功能。
 
 ## 尚未在真實環境驗證
 

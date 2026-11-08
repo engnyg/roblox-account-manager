@@ -21,7 +21,7 @@ public sealed class SettingsWindow : Window
     private readonly CheckBox _multi, _direct, _relaunch, _watcher, _watcherMem, _tray;
     private readonly TextBox _watcherMb = Box(width: 70);
     // Performance
-    private readonly CheckBox _lowerPrio, _autoTrim;
+    private readonly CheckBox _lowerPrio, _autoTrim, _blockCrash;
     private readonly TextBox _trimMin = Box(width: 70), _quality = Box(width: 70);
     private readonly ComboBox _renderer = new() { ItemsSource = Enum.GetNames<Renderer>(), Width = 140, HorizontalAlignment = HorizontalAlignment.Left };
     // Theme
@@ -81,6 +81,7 @@ public sealed class SettingsWindow : Window
         // ---- 效能 ----
         var p = Tab(T("Performance"));
         _lowerPrio = Check(T("Lower CPU priority (Below Normal) while 2 or more instances are running"), _s.LowerPriority); p.Children.Add(_lowerPrio);
+        _blockCrash = Check(T("Block the crash handler (closes RobloxCrashHandler.exe)"), _s.BlockCrashHandler); p.Children.Add(_blockCrash);
         _autoTrim = Check(T("Automatically trim memory every (minutes):"), _s.AutoTrimEnabled); p.Children.Add(_autoTrim);
         _trimMin.Text = _s.AutoTrimMinutes.ToString(); _trimMin.HorizontalAlignment = HorizontalAlignment.Left; _trimMin.Margin = Gap(0, 0, 0, 6); p.Children.Add(_trimMin);
         p.Children.Add(Btn(T("Trim memory now"), (_, _) =>
@@ -237,6 +238,7 @@ public sealed class SettingsWindow : Window
         _s.TeleportControllerUrl = _tp.Text.Trim();
 
         _s.LowerPriority = _lowerPrio.IsChecked == true;
+        _s.BlockCrashHandler = _blockCrash.IsChecked == true;
         _s.AutoTrimEnabled = _autoTrim.IsChecked == true;
         if (int.TryParse(_trimMin.Text, out var tm)) _s.AutoTrimMinutes = Math.Clamp(tm, 1, 1440);
         _s.Renderer = _renderer.SelectedItem as string ?? "Default";

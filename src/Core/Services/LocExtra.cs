@@ -97,6 +97,7 @@ public static partial class Loc
         ["Hide to the system tray when the window is closed"] = "關閉視窗時縮到系統匣",
         ["Roblox channel (blank = default):"] = "Roblox 頻道（留空 = 預設）：",
         ["Performance"] = "效能", ["Lower CPU priority (Below Normal) while 2 or more instances are running"] = "同時執行 2 個以上實例時降低 CPU 優先權（低於正常）",
+        ["Block the crash handler (closes RobloxCrashHandler.exe)"] = "封鎖當機處理程式（結束 RobloxCrashHandler.exe）",
         ["Automatically trim memory every (minutes):"] = "每隔幾分鐘自動釋放記憶體：", ["Trim memory now"] = "立即釋放記憶體",
         ["Force a rendering engine (applies to newly started instances):"] = "強制指定渲染引擎（只影響新啟動的實例）：",
         ["Graphics quality override 1-21 (0 = don't override):"] = "覆寫圖形品質 1-21（0 = 不覆寫）：",
