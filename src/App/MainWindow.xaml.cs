@@ -894,7 +894,14 @@ public partial class MainWindow : Window
         if (text is null || !int.TryParse(text.Trim(), out var fps)) return;
         _settings.FpsCap = Math.Max(0, fps);
         _settings.Save();
-        Status(FpsUnlocker.SetFpsCap(_settings.FpsCap) ? $"FPS: {_settings.FpsCap}" : "FPS: failed");
+        Status(FpsUnlocker.SetFpsCap(_settings.FpsCap) ? $"FPS: {_settings.FpsCap}{RestartHint()}" : "FPS: failed");
+    }
+
+    /// <summary>FPS 等旗標只在 Roblox 啟動時讀取；已有實例在跑時提醒使用者要重開。</summary>
+    internal static string RestartHint()
+    {
+        int n = RobloxLauncher.RunningInstanceCount();
+        return n > 0 ? $"  —  {T("Applies to newly started instances; restart the")} {n} {T("running instance(s) to apply it.")}" : "";
     }
 
     private void Mixer_Click(object s, RoutedEventArgs e) => new MixerWindow(() => _accounts.ToList(), _bg) { Owner = this }.Show();

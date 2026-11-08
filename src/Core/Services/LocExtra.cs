@@ -167,6 +167,10 @@ public static partial class Loc
         ["The first time you allow other devices, Windows Firewall may ask — choose Private networks."] = "第一次允許其他裝置時，Windows 防火牆可能會詢問，請選「私人網路」。",
         ["Nexus only listens on this computer. Passwords are checked in the 'password' header or query string."] = "Nexus 只開放給這台電腦。密碼會從 'password' 標頭或查詢字串檢查。",
 
+        // FPS 上限
+        ["Applies to newly started instances; restart the"] = "只對之後才啟動的實例生效；請重開",
+        ["running instance(s) to apply it."] = "個執行中的實例才會套用。",
+
         // 產生帳號（BloxGen / Altgen）
         ["Generate Accounts..."] = "產生帳號...", ["Generate Accounts"] = "產生帳號", ["Generate"] = "產生", ["Generated"] = "已產生",
         ["Buy and import accounts from BloxGen or Altgen. Each account is saved as soon as it is received."] =

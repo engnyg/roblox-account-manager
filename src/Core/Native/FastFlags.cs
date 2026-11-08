@@ -40,9 +40,10 @@ public static class FastFlags
     }
 
     /// <summary>讀出、套用修改、寫回。找不到 Roblox 安裝位置或寫入失敗回傳 false。</summary>
-    public static bool Update(Action<JsonObject> mutate)
+    public static bool Update(Action<JsonObject> mutate) => UpdateAt(SettingsPath(), mutate);
+
+    private static bool UpdateAt(string? path, Action<JsonObject> mutate)
     {
-        var path = SettingsPath();
         if (path is null) return false;
         try
         {
@@ -56,6 +57,33 @@ public static class FastFlags
             return true;
         }
         catch { return false; }
+    }
+
+    /// <summary>
+    /// 把已儲存的 FPS 上限 / 渲染引擎 / 畫質寫進 <paramref name="exe"/> 旁邊的 ClientSettings（沒給 exe 就用 <see cref="SettingsPath"/> 找到的那個）。
+    /// Roblox 只在「啟動時」讀這個檔，所以每次啟動實例前都要呼叫：Roblox 更新換了版本資料夾、或旗標被別的工具洗掉時才不會失效。
+    /// 只寫「有設定」的項目（FPS &gt; 0、渲染引擎不是 Default、畫質 &gt; 0）；沒設定的不動，也不會清掉別人手動設的值。
+    /// </summary>
+    public static bool ApplySaved(Services.AppSettings s, string? exe = null)
+    {
+        var fps = s.FpsCap;
+        var hasFps = fps > 0 && fps < 10000;
+        var hasRenderer = s.Renderer != "Default" && Enum.TryParse<Renderer>(s.Renderer, out var r) && r != Renderer.Default;
+        var hasQuality = s.QualityLevel > 0;
+        if (!hasFps && !hasRenderer && !hasQuality) return true;   // 沒有要寫的，不建檔
+
+        var path = PathOverride ?? (exe is null ? SettingsPath() : Path.Combine(Path.GetDirectoryName(exe)!, "ClientSettings", "ClientAppSettings.json"));
+        return UpdateAt(path, o =>
+        {
+            if (hasFps) o[FpsFlag] = fps;
+            if (hasRenderer)
+            {
+                Enum.TryParse<Renderer>(s.Renderer, out var rr);
+                foreach (var f in RendererFlags) o.Remove(f);
+                o[RendererFlags[(int)rr - 1]] = true;
+            }
+            if (hasQuality) o[QualityFlag] = Math.Clamp(s.QualityLevel, 1, 21);
+        });
     }
 
     /// <summary>FPS 上限：≤0 或 ≥10000 代表不限制（移除旗標）。</summary>

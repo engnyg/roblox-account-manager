@@ -98,8 +98,7 @@ public sealed class BackgroundServices : IDisposable
         RestartNexus(s);
 
         // 設定檔裡的 FPS / 渲染 / 畫質旗標
-        if (s.Renderer != "Default" && Enum.TryParse<Renderer>(s.Renderer, out var r)) FastFlags.SetRenderer(r);
-        if (s.QualityLevel > 0) FastFlags.SetQualityLevel(s.QualityLevel);
+        FastFlags.ApplySaved(s);
     }
 
     /// <summary>網頁控制面板的操作（主視窗）。</summary>

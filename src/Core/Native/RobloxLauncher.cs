@@ -33,6 +33,18 @@ public static class RobloxLauncher
         return null;
     }
 
+    /// <summary>目前執行中的 Roblox 實例數（FPS 等旗標只對「之後才啟動」的實例生效，介面用它提醒使用者）。</summary>
+    public static int RunningInstanceCount()
+    {
+        try
+        {
+            var procs = Process.GetProcessesByName("RobloxPlayerBeta");
+            foreach (var p in procs) p.Dispose();
+            return procs.Length;
+        }
+        catch { return 0; }
+    }
+
     private static IEnumerable<string> InstalledCandidates()
     {
         var local = Environment.GetEnvironmentVariable("LOCALAPPDATA");
@@ -76,6 +88,9 @@ public static class RobloxLauncher
         var exe = settings.DirectLaunch ? FindRobloxExe() : null;
 
         MultiRoblox.PrepareForLaunch();
+
+        // Roblox 只在啟動時讀 ClientAppSettings.json：先把 FPS 上限等旗標寫到這個 exe 旁邊（失敗不擋啟動）
+        if (exe is not null) { try { FastFlags.ApplySaved(settings, exe); } catch { } }
 
         if (exe is null)
         {
