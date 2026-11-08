@@ -1,36 +1,6 @@
-# Python
-__pycache__/
-*.py[cod]
-*.pyo
-*.pyd
-.Python
-*.egg-info/
-dist/
-build/
-*.spec
-
-# Data & logs
-data/
-accounts_info.txt
-
-# Sensitive config (optional: commit config.ini but exclude captcha keys etc.)
-# config.ini
-
-# Virtual environments
-venv/
-.venv/
-env/
-
-# Claude Code
-.claude/
-
-# IDE
-.vscode/
-.idea/
-*.suo
+bin/
+obj/
+publish/
+.vs/
 *.user
-
-# OS
-Thumbs.db
-.DS_Store
-desktop.ini
+TestResults/

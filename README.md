@@ -1,76 +1,82 @@
-# Roblox Account Manager V2
+# Roblox Account Manager V3 (C# / WPF)
 
-以 Python/PySide6 重寫的 Roblox 多帳號管理工具，靈感來自以下兩個原版專案：
-- [ic3w0lf22/Roblox-Account-Manager](https://github.com/ic3w0lf22/Roblox-Account-Manager) — C# 帳號管理器
-- [qing762/roblox-auto-signup](https://github.com/qing762/roblox-auto-signup) — 自動註冊腳本
+V2（Python）的 C# 重寫版，並把 MultiRoblox-RAM 的功能一併移植進來。目標框架 .NET 10、WPF（Fluent 主題）。
 
 ## 功能
 
-- **帳號管理** — 儲存並管理多個 Roblox 帳號，Cookie 加密保存
-- **帳號生成器** — 透過瀏覽器自動化批量建立新帳號（需 NopeCHA API Key 解驗證碼）
-- **Multi-Roblox** — 繞過單一實例限制，同時運行多個 Roblox
-- **遊戲啟動器** — 直接將指定帳號加入任意遊戲／伺服器
-- **伺服器瀏覽器** — 瀏覽並加入特定遊戲伺服器
-- **頭像隨機化** — 自動隨機化生成帳號的外觀
-- **FPS 解鎖** — 解除 Roblox 預設 FPS 上限
-- **Nexus** — WebSocket 伺服器，供遊戲內腳本與帳號通訊
-- **Web API** — 本地 HTTP 伺服器，支援外部程式控制帳號
-- **Watcher** — 監控並自動重啟 Roblox 進程
-- **主題引擎** — 可自訂深色／淺色主題
+### 帳號與啟動
+- 帳號清單（清單 / 磚塊兩種版面）、群組、別名、描述、搜尋；**勾選要同時啟動的帳號 →「啟動已勾選」**（勾選狀態會保存）
+- 登入新增帳號（內嵌 WebView2 登入）、在瀏覽器開啟帳號（自動帶入 cookie）、匯入 cookie / V2 JSON / **V2 與原版 RAM 的 Argon2 加密 `accounts.dat`**
+- 加入伺服器：Place ID / Job ID（可貼整條加入連結，會自動校正 Place ID）；Job ID 先用 gamejoin API 預檢
+- **每個帳號專屬的啟動目標**：Place ID、遊戲網址、Job ID 連結、**私人伺服器連結**（含 `share?code=…&type=Server`）或**追蹤某位玩家**
+- **私人伺服器**：伺服器清單 API 優先，失敗再用 gamejoin 的 join-private-game
+- **伺服器清單**（可多頁、顯示人數 / Ping / FPS，選一台直接加入）與**遊戲排行榜**（explore-api，附舊 API 備援）
+- **自動重新進入遊戲**：斷線 / 當機時依帳號目標重開（10 分鐘內最多 3 次，Job 失敗退回 Place）
 
-## 系統需求
+### 多開與效能
+- **多開**：持有 `ROBLOX_singletonMutex`、關閉舊實例的 `ROBLOX_singletonEvent` handle、直接啟動 `RobloxPlayerBeta.exe`
+- **混音台**：記憶體 / CPU / 音量 / 優先權顯示；每個實例的 CPU・RAM 上限、**音量與靜音（Windows Core Audio）**、
+  **釋放記憶體**、**處理程序優先權**、視窗大小與格狀排列、FPS 上限、**渲染器（D3D11 / OpenGL / Vulkan）與畫質覆寫**、結束選取 / 全部
+- 實例監看：記憶體持續過低的實例自動關閉、同時 2 個以上實例時自動降低 CPU 優先權、定時釋放記憶體
+- Roblox 頻道（channel）設定、防掛機
 
-- Windows 10/11
-- Python 3.11+
-- [Ungoogled Chromium](https://github.com/ungoogled-software/ungoogled-chromium)（帳號生成用，放入 `lib/`）
+### 帳號工具
+PIN 解鎖、追蹤隱私、變更密碼 / 信箱 / 顯示名稱、登出其他裝置、封鎖 / 解除封鎖（含全部解除）、好友邀請、尋找玩家所在的伺服器。
 
-## 安裝
+### 整合與自動化
+- **網頁控制面板**（預設 `http://localhost:7963/`，工具 → 開啟網頁控制面板）：用手機或其他電腦的瀏覽器看帳號與執行狀態、
+  勾選、啟動（目的地可貼 Place ID / 伺服器連結 / 私人伺服器連結）、結束實例、看記錄；配色跟著桌面主題。
+  **面板內也有「混音台」**：實例的記憶體 / CPU / 音量，並可調音量與靜音、釋放記憶體、優先權、CPU・RAM 限制、FPS 上限、視窗大小與排列、渲染器與畫質、結束實例
+  （`GET/POST /api/mixer`；只能操作目前真的是 Roblox 的 PID；結束全部需明確指定 `all`）。密碼可含中文（網頁會做 URL 編碼後送出）
+  在 設定 → 服務 勾選「允許手機等同一網路的裝置連線」並**設定密碼**後才會對區網開放（沒有密碼只開放本機）
+- **Web API**：`GET /api/state`、`POST /api/launch | /api/kill | /api/check`（需 `X-RAM-Panel: 1` 標頭，防跨站請求），
+  以及 V2 相容的 `/GetCSRFToken`、`/GetAccounts`、`POST /JoinServer`、`/GetCurrentAccount`
+- **Nexus**（預設 `localhost:7964`，WebSocket）：遊戲內腳本回連後可由管理器下 `ExecuteScript / Kick / Chat / Rejoin / JoinServer`
+- 密碼放在 `password` 標頭或查詢字串；Nexus 只監聽本機。網頁面板不會送出任何 cookie
+- **追蹤**：定時對 Roblox 視窗截圖（可指定每個帳號的擷取區域）並傳到 Discord webhook
+
+### 介面與資料
+- 主視窗是「發射台」版面：左側群組清單（顯示帳號數與執行中數量）、上方**目的地卡片**（輸入 Place ID 後即時顯示遊戲圖示、名稱與目前人數，
+  避免把一整批帳號送進錯的遊戲）、大頭貼外圈在帳號執行中時亮起；識別碼（Place ID / Job ID / PID）用等寬字
+- 8 款內建主題（Aurora / Ocean / Forest / Amber / Rose / Sunset / Graphite / Mono）、System / Light / Dark、**主題編輯器**（顏色、背景圖、不透明度，存成自訂主題）
+- 按鈕點擊音效（內建或自訂 `.wav`）、縮到系統匣、記錄視窗（搜尋 / 複製 / 自動捲動）
+- 帳號檔預設以 Windows DPAPI（目前使用者）加密；也可在「設定 → 資料與隱私」改用**自訂密碼（PBKDF2 + AES-256-GCM）**，每次啟動需輸入
+
+## 資料位置
+
+`%LOCALAPPDATA%\RobloxAccountManagerV3\`：`config.json`、`accounts.v3.dat`、`custom_themes.json`；
+用環境變數 `RAM_V3_DATA` 可改位置。
+
+## 連接埠
+
+| 服務 | 預設 | 設定位置 |
+| --- | --- | --- |
+| 網頁控制面板 / Web API | 7963 | 設定 → 服務 |
+| Nexus (WebSocket) | 7964 | 設定 → 服務 |
+
+## 建置 / 測試
 
 ```bash
-git clone https://github.com/engnyg/roblox-account-manager.git
-cd roblox-account-manager
-pip install -r requirements.txt
-python main.py
+dotnet build
+dotnet test tests/Tests
+dotnet publish src/App -c Release -r win-x64 --self-contained false -o publish
 ```
 
-## 帳號生成
+測試中的原生部分（多開、handle 關閉、CPU/RAM 限制、視窗排列、音量、截圖）使用替身行程 / 假的 HTTP handler，
+不會動到真正的 Roblox 或網路。
 
-帳號生成需要：
-1. **NopeCHA API Key** — 至 設定 → 生成器 → Captcha API Key 填入（[nopecha.com](https://nopecha.com)）
-2. **Ungoogled Chromium** — 解壓至 `lib/ungoogled-chromium-*/`
+## 刻意沒有移植的部分
 
-## 設定說明
+- **帳號產生器**（大量建立帳號、繞過 captcha、BloxGen / Altgen API）：涉及自動大量註冊與繞過驗證，不做。
+- **V2 的自動更新器**：V3 以手動發行為準。
+- **「封鎖當機處理程式」**：上游已移除該功能。
 
-所有設定儲存於 `config.ini`，主要選項：
+## 尚未在真實環境驗證
 
-| 區段 | 鍵值 | 說明 |
-|------|------|------|
-| `General` | `language` | 介面語言（`en` / `zh`） |
-| `General` | `theme` | 介面主題（`Dark` / `Light`） |
-| `General` | `unlockfps` | 啟用 FPS 解鎖 |
-| `Generator` | `defaultpassword` | 生成帳號的預設密碼 |
-| `Generator` | `captchaapikey` | NopeCHA API Key |
-| `Generator` | `useproxy` | 生成時使用代理 |
-| `WebServer` | `enabled` | 啟用本地 Web API 伺服器 |
-| `WebServer` | `port` | Web API 埠號（預設：`7963`） |
-| `AccountControl` | `enabled` | 啟用 Nexus WebSocket 伺服器 |
-| `AccountControl` | `port` | Nexus 埠號（預設：`7964`） |
+單元測試涵蓋 API 解析、加密、私人伺服器流程、重開監督、Web API / Nexus 協定等邏輯。
+下列項目只能在真正的 Roblox 與帳號上驗證，目前**沒有**實測：實際啟動並進入遊戲、WebView2 登入流程、
+對真實 Roblox 視窗截圖、真實 Roblox 的音訊工作階段、自動重開在真實斷線下的行為。
 
-## 打包
+## 授權
 
-```bash
-pip install pyinstaller
-pyinstaller build.spec
-```
-
-輸出檔案位於 `dist/`。
-
-## 致謝
-
-- 原版帳號管理器：[ic3w0lf22/Roblox-Account-Manager](https://github.com/ic3w0lf22/Roblox-Account-Manager)
-- 原版自動註冊：[qing762/roblox-auto-signup](https://github.com/qing762/roblox-auto-signup)
-- 驗證碼解題：[NopeCHA](https://nopecha.com)
-
-## 免責聲明
-
-本專案僅供學習研究使用，請遵守 [Roblox 使用條款](https://en.help.roblox.com/hc/en-us/articles/115004647846)。
+見 `THIRD_PARTY_NOTICES.md`（部分程式碼與功能參考自 PolyForm Noncommercial 授權的專案，僅限非商業用途）。
