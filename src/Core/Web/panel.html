@@ -77,8 +77,17 @@
   details.mixer { margin-top: 12px; }
   details.mixer > summary { cursor: pointer; padding: 12px 14px; font-weight: 600; display: flex; justify-content: space-between; gap: 12px; list-style: none; }
   details.mixer > summary::-webkit-details-marker { display: none; }
-  details.mixer > summary::before { content: "▸"; color: var(--dim); margin-right: 6px; }
-  details.mixer[open] > summary::before { content: "▾"; }
+  details.mixer > summary::before { content: ""; display: inline-block; width: 6px; height: 6px; margin: 0 10px 2px 2px;
+    border-right: 2px solid var(--dim); border-bottom: 2px solid var(--dim); transform: rotate(-45deg); transition: transform .15s; }
+  details.mixer[open] > summary::before { transform: rotate(45deg); }
+  /* 扁平線條圖標：單色、跟著文字顏色走 */
+  .ico { width: 18px; height: 18px; flex: none; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; vertical-align: -3px; margin-right: 8px; }
+  .launch .lbl { display: inline-flex; align-items: center; }
+  .launch .ico { stroke: none; margin-right: 10px; width: 20px; height: 20px; }
+  details.log summary .ico { margin-right: 8px; }
+  .icon svg { width: 34px; height: 34px; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; opacity: .7; }
+  .dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 5px; border: 1.5px solid var(--dim); vertical-align: 0; }
+  .pid.on .dot { background: var(--ok); border-color: var(--ok); }
   details.mixer > summary span { color: var(--dim); font-weight: 400; font-size: 13px; margin-left: auto; }
   .mixbody { padding: 0 14px 14px; }
   .inst-head { display: flex; justify-content: space-between; align-items: center; color: var(--dim); font-size: 13px; padding: 6px 0; gap: 8px; flex-wrap: wrap; }
@@ -138,7 +147,7 @@
   </header>
 
   <section class="card dest" aria-label="目的地">
-    <div class="icon" id="icon" aria-hidden="true">🎮</div>
+    <div class="icon" id="icon" aria-hidden="true"></div>   <!-- 沒有遊戲圖示時由 script 放入 PLACEHOLDER 的扁平圖標 -->
     <div class="game">
       <div class="eyebrow">目的地</div>
       <div class="name" id="gameName">選擇目的地</div>
@@ -161,7 +170,7 @@
   <section class="card list" id="list" aria-live="polite"><div class="empty">連線中…</div></section>
 
   <details class="card mixer" id="mixer">
-    <summary>混音台（實例管理）<span id="mixCount"></span></summary>
+    <summary><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 4v16M12 4v16M19 4v16" /><circle cx="5" cy="14" r="2.2" fill="var(--bg)"/><circle cx="12" cy="8" r="2.2" fill="var(--bg)"/><circle cx="19" cy="15" r="2.2" fill="var(--bg)"/></svg>混音台（實例管理）<span id="mixCount"></span></summary>
     <div class="mixbody">
       <div class="inst-head">
         <label><input type="checkbox" id="instAll" class="check"> 全選</label>
@@ -205,14 +214,14 @@
   </details>
 
   <details class="card log">
-    <summary>記錄</summary>
+    <summary><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 5h14M5 10h14M5 15h9M5 20h6" /></svg>記錄</summary>
     <pre id="log"></pre>
   </details>
 </div>
 
 <div class="launchbar">
   <div class="inner">
-    <button class="launch" id="launch"><span>▶ 啟動已勾選</span><b id="checkedCount">0</b></button>
+    <button class="launch" id="launch"><span class="lbl"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 4.5v15l12-7.5z" fill="currentColor"/></svg>啟動已勾選</span><b id="checkedCount">0</b></button>
   </div>
 </div>
 
@@ -230,7 +239,10 @@
 
 <script>
 const $ = id => document.getElementById(id);
+// 遊戲圖示的預設扁平圖標（方塊）
+const PLACEHOLDER = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l8 4.5v9L12 21l-8-4.5v-9z"/><path d="M4 7.5l8 4.5 8-4.5M12 12v9"/></svg>';
 let password = sessionStorage.getItem("ram-pw") || "";
+$("icon").innerHTML = PLACEHOLDER;
 let state = null, group = "", lastRender = "", placeTouched = false, placeTimer = 0, lastPlaceLookup = "";
 
 function headers() {
@@ -311,7 +323,7 @@ function render() {
           <div class="sub">
             ${a.subtitle ? `<span>${esc(a.subtitle)}</span>` : ""}
             ${a.group && a.group !== "Default" ? `<span class="pill">${esc(a.group)}</span>` : ""}
-            <span class="pid ${a.pid ? "on" : ""}">${a.pid ? "● PID " + a.pid : "○ 閒置"}</span>
+            <span class="pid ${a.pid ? "on" : ""}"><span class="dot"></span>${a.pid ? "PID " + a.pid : "閒置"}</span>
             ${a.target ? `<span class="mono" title="此帳號的專屬目標">→ ${esc(a.target)}</span>` : ""}
           </div>
         </div>
@@ -341,7 +353,7 @@ async function lookupPlace() {
   if (!/^\d+$/.test(id)) {
     $("gameName").textContent = id ? "Place ID 只能是數字" : "選擇目的地";
     $("gameMeta").textContent = "輸入 Place ID，或在 Job ID 欄貼上遊戲 / 伺服器 / 私人伺服器連結。";
-    icon.style.backgroundImage = ""; icon.textContent = "🎮";
+    icon.style.backgroundImage = ""; icon.innerHTML = PLACEHOLDER;
     return;
   }
   $("gameMeta").textContent = "正在查詢遊戲…";
@@ -355,7 +367,7 @@ async function lookupPlace() {
     if (e.message === "unauthorized") return;
     $("gameName").textContent = "找不到這個遊戲";
     $("gameMeta").textContent = "請確認 Place ID，或把遊戲 / 伺服器連結貼到 Job ID 欄。";
-    icon.style.backgroundImage = ""; icon.textContent = "🎮";
+    icon.style.backgroundImage = ""; icon.innerHTML = PLACEHOLDER;
   }
 }
 

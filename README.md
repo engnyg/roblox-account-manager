@@ -1,6 +1,38 @@
-# Roblox Account Manager V3 (C# / WPF)
+<div align="center">
+
+# Roblox Account Manager V3
+
+**多帳號、多開、混音台與手機遙控，一個 Windows 程式搞定**
+
+C# · WPF（Fluent）· .NET 10 · 8 款主題 · 內建網頁控制面板
+
+<img src="docs/images/main-list.png" alt="主視窗：發射台版面" width="860">
+
+</div>
 
 V2（Python）的 C# 重寫版，並把 MultiRoblox-RAM 的功能一併移植進來。目標框架 .NET 10、WPF（Fluent 主題）。
+
+## 畫面
+
+### 桌面版
+
+| 磚塊版面（Aurora 主題） | 換個主題（Sunset） |
+| :---: | :---: |
+| <img src="docs/images/main-tiles.png" alt="磚塊版面" width="420"> | <img src="docs/images/theme-sunset.png" alt="Sunset 主題" width="420"> |
+
+**混音台**：每個實例的記憶體、CPU、音量與優先權，以及 CPU / RAM 限制、視窗排列、FPS、渲染器與畫質。
+
+<img src="docs/images/mixer.png" alt="混音台" width="640">
+
+### 網頁控制面板（手機也能用）
+
+在桌面版「工具 → 開啟網頁控制面板」。配色跟著桌面主題；區網（手機）連線需設定密碼。
+
+| 電腦瀏覽器 | 手機：帳號與目的地 | 手機：混音台 |
+| :---: | :---: | :---: |
+| <img src="docs/images/web-panel.png" alt="網頁面板（電腦）" width="460"> | <img src="docs/images/web-panel-mobile.png" alt="網頁面板（手機）" width="200"> | <img src="docs/images/web-panel-mobile-mixer.png" alt="網頁面板混音台（手機）" width="200"> |
+
+> 截圖中的帳號、頭像與混音台實例數據為示範用資料。
 
 ## 功能
 
