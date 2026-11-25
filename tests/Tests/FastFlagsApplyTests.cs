@@ -52,6 +52,22 @@ public class FastFlagsApplyTests : IDisposable
     // ---------------- ClientAppSettings.json ----------------
 
     [Fact]
+    public void ApplySaved_does_not_throw_when_the_client_settings_folder_cannot_be_created()
+    {
+        // 模擬 Roblox 裝在 Program Files 而管理器沒有系統管理員權限：ClientSettings 建不起來（這裡用「同名檔案擋住」重現 IOException）
+        File.WriteAllText(Path.Combine(_dir, "ClientSettings"), "not a folder");
+        FastFlags.PathOverride = null;
+        RobloxLauncher.FindExeOverride = () => _exe;
+        try
+        {
+            var ex = Record.Exception(() => FastFlags.ApplySaved(Saved(fps: 30)));
+            Assert.Null(ex);
+            Assert.False(FastFlags.ApplySaved(Saved(fps: 30)));
+        }
+        finally { RobloxLauncher.FindExeOverride = null; }
+    }
+
+    [Fact]
     public void ApplySaved_writes_fps_next_to_the_given_exe_and_keeps_other_flags()
     {
         Directory.CreateDirectory(Path.GetDirectoryName(_json)!);

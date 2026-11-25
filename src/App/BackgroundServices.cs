@@ -98,7 +98,8 @@ public sealed class BackgroundServices : IDisposable
         RestartNexus(s);
 
         // 設定檔裡的 FPS / 渲染 / 畫質旗標
-        FastFlags.ApplySaved(s);
+        try { FastFlags.ApplySaved(s); }
+        catch (Exception ex) { AppLog.Warn("[旗標] 套用已存的 FPS/渲染設定失敗：" + ex.Message); }
     }
 
     /// <summary>網頁控制面板的操作（主視窗）。</summary>

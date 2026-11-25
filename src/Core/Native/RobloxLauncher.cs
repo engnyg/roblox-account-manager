@@ -110,6 +110,48 @@ public static class RobloxLauncher
 
         _ = Task.Run(() => { try { ResourceLimits.ApplyDefaults(pid); } catch { } });
         try { WindowLayout.ScheduleLayout(pid); } catch { }
+        // 若這個行程只是把請求交給常駐托盤行程就結束了，真正的遊戲在另一個 pid：找到後也套用限制與排版
+        _ = Task.Run(() => FollowHandoff(pid, TrackerOfUri(launcherUri)));
         return (pid, "direct");
+    }
+
+    internal static string? TrackerOfUri(string uri)
+    {
+        var m = System.Text.RegularExpressions.Regex.Match(uri, @"browsertrackerid:(\d+)", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+        return m.Success ? m.Groups[1].Value : null;
+    }
+
+    /// <summary>啟動的行程很快就結束（交給常駐行程了）時，等 tracker 相同的實例出現，對它套用限制與視窗排版。</summary>
+    private static void FollowHandoff(int launchedPid, string? tracker)
+    {
+        if (string.IsNullOrEmpty(tracker)) return;
+        try
+        {
+            // 先確認啟動的行程是不是很快就結束；沒結束就代表它自己就是遊戲，不用處理
+            var until = DateTime.UtcNow.AddSeconds(30);
+            while (DateTime.UtcNow < until && IsRunning(launchedPid)) Thread.Sleep(500);
+            if (IsRunning(launchedPid)) return;
+
+            var give = DateTime.UtcNow.AddSeconds(90);
+            while (DateTime.UtcNow < give)
+            {
+                var inst = RobloxProcesses.List().FirstOrDefault(i => i.TrackerId == tracker);
+                if (inst is not null)
+                {
+                    try { MultiRoblox.TrackPid(inst.Pid); } catch { }
+                    try { ResourceLimits.ApplyDefaults(inst.Pid); } catch { }
+                    try { WindowLayout.ScheduleLayout(inst.Pid); } catch { }
+                    return;
+                }
+                Thread.Sleep(1000);
+            }
+        }
+        catch { }
+    }
+
+    private static bool IsRunning(int pid)
+    {
+        try { using var p = Process.GetProcessById(pid); return !p.HasExited; }
+        catch { return false; }
     }
 }

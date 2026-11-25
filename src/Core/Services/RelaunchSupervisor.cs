@@ -28,6 +28,17 @@ public sealed class RelaunchSupervisor : IDisposable
         try { using var p = System.Diagnostics.Process.GetProcessById(pid); return !p.HasExited; }
         catch { return false; }
     };
+    /// <summary>
+    /// 啟動的 pid 只是中轉（把請求交給常駐托盤行程就結束了）時，pid 死了不代表斷線：
+    /// 只要這個帳號的 tracker 還對得到執行中的實例就不重開。測試可替換。
+    /// </summary>
+    public Func<Account, bool> HasRunningInstance { get; set; } = acc =>
+    {
+        if (string.IsNullOrEmpty(acc.BrowserTrackerId)) return false;
+        try { return Native.RobloxProcesses.List().Any(i => i.TrackerId == acc.BrowserTrackerId); }
+        catch { return false; }
+    };
+
     public Func<Account, LaunchTarget, Task<JoinResult>> Relauncher { get; set; } = (_, _) => Task.FromResult(new JoinResult(false, "no launcher"));
 
     public event Action<Account, JoinResult>? Relaunched;
@@ -56,6 +67,7 @@ public sealed class RelaunchSupervisor : IDisposable
         List<Tracked> dead;
         lock (_gate)
             dead = _byUser.Values.Where(x => t - x.Started >= Grace && !IsAlive(x.Pid)).ToList();
+        dead = dead.Where(x => !HasRunningInstance(x.Account)).ToList();
 
         int n = 0;
         foreach (var d in dead)

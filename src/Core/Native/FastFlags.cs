@@ -27,7 +27,10 @@ public static class FastFlags
         var exe = RobloxLauncher.FindRobloxExe();
         if (exe is null) return null;
         var dir = Path.Combine(Path.GetDirectoryName(exe)!, "ClientSettings");
-        Directory.CreateDirectory(dir);
+        // Roblox 裝在 Program Files 而管理器沒用系統管理員執行時，這裡會 UnauthorizedAccessException；
+        // 寫不進去就視為「沒有旗標檔」，不能讓它擋住啟動
+        try { Directory.CreateDirectory(dir); }
+        catch (Exception e) when (e is UnauthorizedAccessException or IOException) { return null; }
         return Path.Combine(dir, "ClientAppSettings.json");
     }
 

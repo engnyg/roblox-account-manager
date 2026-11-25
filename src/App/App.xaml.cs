@@ -10,8 +10,19 @@ public partial class App : Application
         Loc.Language = AppSettings.Current.Language;
         DispatcherUnhandledException += (_, args) =>
         {
-            AppLog.Error(args.Exception.ToString());
-            MessageBox.Show(args.Exception.Message, "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+            var full = args.Exception.ToString();
+            AppLog.Error(full);
+            try
+            {
+                Directory.CreateDirectory(AppSettings.DataDir);
+                File.AppendAllText(Path.Combine(AppSettings.DataDir, "crash.log"), $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}] {full}{Environment.NewLine}{Environment.NewLine}");
+            }
+            catch { }
+            // 建構函式例外會被包成 XamlParseException，Message 看不出原因；顯示最內層那個
+            var inner = args.Exception;
+            while (inner.InnerException is not null) inner = inner.InnerException;
+            MessageBox.Show(inner == args.Exception ? inner.Message : $"{inner.GetType().Name}: {inner.Message}\n\n({args.Exception.Message})",
+                "Error", MessageBoxButton.OK, MessageBoxImage.Error);
             args.Handled = true;
         };
         try { ThemeManager.Apply(AppSettings.Current.Theme); }
